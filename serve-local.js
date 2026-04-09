@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const leadHandler = require("./api/leads");
 
 const root = __dirname;
 const port = 4173;
@@ -17,9 +18,53 @@ const types = {
   ".ico": "image/x-icon",
 };
 
+const loadEnvFile = (filename) => {
+  const filePath = path.join(root, filename);
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(filePath, "utf8");
+  content.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      return;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex === -1) {
+      return;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const value = trimmed.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  });
+};
+
+loadEnvFile(".env");
+loadEnvFile(".env.local");
+
 http
   .createServer((req, res) => {
     const rawPath = decodeURIComponent((req.url || "/").split("?")[0]);
+
+    if (rawPath === "/api/leads") {
+      Promise.resolve(leadHandler(req, res)).catch((error) => {
+        res.writeHead(500, {
+          "Content-Type": "application/json; charset=utf-8",
+        });
+        res.end(
+          JSON.stringify({
+            message: error.message || "Falha inesperada ao processar o lead.",
+          })
+        );
+      });
+      return;
+    }
+
     const requestedPath = rawPath === "/" ? "/index.html" : rawPath;
     const filePath = path.normalize(path.join(root, requestedPath));
 
