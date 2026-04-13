@@ -9,6 +9,7 @@ const submitButton = document.querySelector("#lead-submit");
 const feedbackNode = document.querySelector("#form-feedback");
 const whatsappInput = document.querySelector("#whatsapp");
 const startedAtInput = document.querySelector("#started_at");
+const keepHeaderScrolled = document.body.classList.contains("legal-page");
 
 const DESKTOP_NAV_BREAKPOINT = 980;
 const SUBMIT_TIMEOUT_MS = 10000;
@@ -39,7 +40,7 @@ const fieldMessages = {
 
 const setHeaderState = () => {
   if (header) {
-    header.classList.toggle("is-scrolled", window.scrollY > 10);
+    header.classList.toggle("is-scrolled", keepHeaderScrolled || window.scrollY > 10);
   }
 };
 

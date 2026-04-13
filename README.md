@@ -65,6 +65,9 @@ O site foi pensado para:
 - [vercel.json](./vercel.json)
   Configuração mínima de produção para headers de segurança, cache de imagens e cache desativado em API.
 
+- [scripts/update-csp-hash.js](./scripts/update-csp-hash.js)
+  Atualiza o hash CSP do JSON-LD inline quando o bloco estruturado em [index.html](./index.html) for editado.
+
 - [robots.txt](./robots.txt) e [sitemap.xml](./sitemap.xml)
   Arquivos de SEO técnico. Antes de publicar, confirme se o domínio configurado está correto.
 
@@ -217,7 +220,7 @@ Exemplo:
 
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=sb_secret_replace_me
+SUPABASE_LEADS_INSERT_KEY=sb_secret_insert_key_replace_me
 SUPABASE_LEADS_TABLE=leads
 SITE_URL=https://your-site.com
 ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
@@ -228,8 +231,8 @@ ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
 - `SUPABASE_URL`
   URL do projeto no Supabase.
 
-- `SUPABASE_SERVICE_ROLE_KEY`
-  Chave usada para inserir leads via API.
+- `SUPABASE_LEADS_INSERT_KEY`
+  Chave server-side usada pela API para inserir leads. Nao use chave publishable/anon aqui e nao exponha essa variavel no frontend.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -269,6 +272,7 @@ O projeto pode ser publicado como site estático com suporte à rota `/api/leads
 Pontos importantes na publicação:
 
 - configurar corretamente as variáveis de ambiente;
+- se editar o JSON-LD em [index.html](./index.html), rodar `node scripts/update-csp-hash.js` antes do deploy;
 - garantir que o domínio final esteja em `SITE_URL`;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;

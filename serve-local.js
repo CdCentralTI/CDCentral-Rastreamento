@@ -6,6 +6,7 @@ const leadHandler = require("./api/leads");
 const root = path.resolve(__dirname);
 const rootBoundary = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
 const port = 4173;
+const blockedStaticSegments = new Set([".git", ".vercel", "chrome-profile", "exports", "node_modules"]);
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -51,6 +52,15 @@ const loadEnvFile = (filename) => {
 loadEnvFile(".env");
 loadEnvFile(".env.local");
 
+const isBlockedStaticPath = (filePath) => {
+  const relativePath = path.relative(root, filePath);
+  if (!relativePath || relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    return false;
+  }
+
+  return relativePath.split(path.sep).some((segment) => segment.startsWith(".") || blockedStaticSegments.has(segment));
+};
+
 http
   .createServer((req, res) => {
     let rawPath = "/";
@@ -84,6 +94,12 @@ http
     if (!filePath.toLowerCase().startsWith(rootBoundary.toLowerCase())) {
       res.writeHead(403);
       res.end("Forbidden");
+      return;
+    }
+
+    if (isBlockedStaticPath(filePath)) {
+      res.writeHead(404);
+      res.end("Not found");
       return;
     }
 

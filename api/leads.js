@@ -1,6 +1,7 @@
 "use strict";
 
-const { normalizeLead, validateLead, saveLeadToSupabase } = require("../lib/leads-service");
+const { isIP } = require("net");
+const { LeadStorageError, normalizeLead, validateLead, saveLeadToSupabase } = require("../lib/leads-service");
 const { HttpError, createRateLimiter, readJsonBody } = require("../lib/http-utils");
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -9,6 +10,7 @@ const MIN_FORM_FILL_TIME_MS = 1500;
 const MAX_FORM_AGE_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 16 * 1024;
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.";
+const TRUST_PROXY_HEADERS = process.env.VERCEL === "1" || process.env.TRUST_PROXY_HEADERS === "1";
 
 const isLeadRateLimited = createRateLimiter({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -49,12 +51,47 @@ const getAllowedOrigin = (req) => {
   return "";
 };
 
-const getClientIp = (req) => {
-  const forwardedFor = String(req.headers["x-forwarded-for"] || "");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
+const normalizeIpCandidate = (value) => {
+  let candidate = String(value || "").trim().replace(/^"|"$/g, "");
+  if (!candidate) {
+    return "";
   }
-  return String(req.headers["x-real-ip"] || req.socket?.remoteAddress || "unknown");
+
+  if (candidate.startsWith("[") && candidate.includes("]")) {
+    candidate = candidate.slice(1, candidate.indexOf("]"));
+  } else {
+    const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
+    if (ipv4WithPort) {
+      candidate = ipv4WithPort[1];
+    }
+  }
+
+  candidate = candidate.replace(/^::ffff:/i, "");
+  return isIP(candidate) ? candidate : "";
+};
+
+const getForwardedForIp = (headerValue) => {
+  const candidates = String(headerValue || "")
+    .split(",")
+    .map(normalizeIpCandidate)
+    .filter(Boolean);
+
+  return candidates[0] || "";
+};
+
+const getClientIp = (req) => {
+  const socketIp = normalizeIpCandidate(req.socket?.remoteAddress);
+
+  if (TRUST_PROXY_HEADERS) {
+    return (
+      getForwardedForIp(req.headers["x-forwarded-for"]) ||
+      normalizeIpCandidate(req.headers["x-real-ip"]) ||
+      socketIp ||
+      "unknown"
+    );
+  }
+
+  return socketIp || "unknown";
 };
 
 const sendJson = (req, res, statusCode, payload) => {
@@ -83,6 +120,23 @@ const isSuspiciousFormTiming = (startedAt) => {
   const elapsed = Date.now() - timestamp;
 
   return !Number.isFinite(timestamp) || timestamp <= 0 || elapsed < MIN_FORM_FILL_TIME_MS || elapsed > MAX_FORM_AGE_MS;
+};
+
+const logApiError = (error) => {
+  console.error("Lead API error:", {
+    name: error?.name || "Error",
+    code: error?.code || "unexpected_error",
+    statusCode: error?.statusCode || 500,
+    message: error?.message || GENERIC_ERROR_MESSAGE,
+  });
+};
+
+const getStorageErrorStatusCode = (error) => {
+  if (error?.code === "missing_supabase_config") {
+    return 500;
+  }
+
+  return 502;
 };
 
 module.exports = async (req, res) => {
@@ -155,7 +209,15 @@ module.exports = async (req, res) => {
       return;
     }
 
-    console.error("Lead API error:", error);
+    if (error instanceof LeadStorageError) {
+      logApiError(error);
+      sendJson(req, res, getStorageErrorStatusCode(error), {
+        message: GENERIC_ERROR_MESSAGE,
+      });
+      return;
+    }
+
+    logApiError(error);
     sendJson(req, res, 500, {
       message: GENERIC_ERROR_MESSAGE,
     });

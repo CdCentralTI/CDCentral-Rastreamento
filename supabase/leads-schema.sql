@@ -11,6 +11,8 @@ create index if not exists leads_created_at_idx on public.leads (created_at desc
 
 alter table public.leads enable row level security;
 
+revoke all on table public.leads from anon, authenticated;
+
 do $$
 begin
   if not exists (
@@ -45,3 +47,5 @@ begin
       check (veiculos between 1 and 9999) not valid;
   end if;
 end $$;
+
+drop policy if exists leads_insert_only on public.leads;
