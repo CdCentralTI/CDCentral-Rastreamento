@@ -221,6 +221,8 @@ Exemplo:
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=sb_secret_insert_key_replace_me
+# Alternativa aceita pela API, se voce ja usa esse nome:
+# SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_LEADS_TABLE=leads
 SITE_URL=https://your-site.com
 ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
@@ -232,7 +234,7 @@ ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
   URL do projeto no Supabase.
 
 - `SUPABASE_LEADS_INSERT_KEY`
-  Chave server-side usada pela API para inserir leads. Nao use chave publishable/anon aqui e nao exponha essa variavel no frontend.
+  Chave server-side usada pela API para inserir leads. A API tambem aceita `SUPABASE_SERVICE_ROLE_KEY` como fallback, que ja e o nome usado em alguns ambientes locais. Nao use chave publishable/anon aqui e nao exponha essa variavel no frontend.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.

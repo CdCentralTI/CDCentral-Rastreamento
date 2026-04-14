@@ -128,6 +128,7 @@ const logApiError = (error) => {
     code: error?.code || "unexpected_error",
     statusCode: error?.statusCode || 500,
     message: error?.message || GENERIC_ERROR_MESSAGE,
+    details: error?.details || "",
   });
 };
 
