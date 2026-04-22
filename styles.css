@@ -258,6 +258,8 @@ svg {
   font-family: "Sora", sans-serif;
   letter-spacing: 0;
   line-height: 1.03;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .hero h1 {
@@ -292,6 +294,7 @@ svg {
   font-weight: 800;
   font-size: 0.96rem;
   line-height: 1.25;
+  white-space: normal;
   cursor: pointer;
   touch-action: manipulation;
   transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
@@ -1535,6 +1538,111 @@ a:focus-visible {
 
   .final-cta__box {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 679px) {
+  .section {
+    padding: 3.55rem 0;
+  }
+
+  .hero p,
+  .section__heading p,
+  .contact__content p {
+    max-width: none;
+  }
+
+  .hero__content,
+  .hero__visual,
+  .section__heading,
+  .contact__content,
+  .panel,
+  .benefit-card,
+  .steps li {
+    min-width: 0;
+  }
+
+  .hero__actions,
+  .solutions-grid,
+  .benefits-grid,
+  .steps,
+  .contact__grid,
+  .footer__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero__actions {
+    gap: 0.65rem;
+  }
+
+  .nav a,
+  .nav .btn,
+  .panel .btn,
+  .final-cta .btn {
+    width: 100%;
+  }
+
+  .section__heading {
+    margin-bottom: 1.45rem;
+  }
+
+  .solutions-grid,
+  .benefits-grid,
+  .steps,
+  .contact__grid {
+    gap: 0.82rem;
+  }
+
+  .panel h3,
+  .benefit-card h3 {
+    line-height: 1.22;
+    overflow-wrap: break-word;
+  }
+
+  .panel ul {
+    gap: 0.45rem;
+  }
+
+  .steps-layout {
+    gap: 0.75rem;
+  }
+
+  .steps-phone {
+    min-height: 0;
+    padding-top: 0.25rem;
+  }
+
+  .steps-phone img {
+    width: auto;
+    max-width: min(72vw, 17rem);
+    max-height: 22rem;
+    min-height: 0;
+  }
+
+  .contact__quick {
+    gap: 0.65rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .hero__visual {
+    margin-top: 0.2rem;
+  }
+
+  .steps-phone img {
+    max-width: min(68vw, 13.75rem);
+    max-height: 18rem;
+  }
+
+  .benefit-card__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-bottom: 0.72rem;
+    border-radius: 0.58rem;
+  }
+
+  .floating-whatsapp {
+    max-width: calc(100vw - 1rem);
   }
 }
 
