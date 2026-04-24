@@ -12,6 +12,7 @@ create index if not exists leads_created_at_idx on public.leads (created_at desc
 alter table public.leads enable row level security;
 
 revoke all on table public.leads from anon, authenticated;
+revoke all on sequence public.leads_id_seq from anon, authenticated;
 
 do $$
 begin
@@ -49,3 +50,7 @@ begin
 end $$;
 
 drop policy if exists leads_insert_only on public.leads;
+
+-- Mantem a tabela fechada para chaves publicas do navegador.
+-- A insercao deve acontecer somente pela API server-side usando uma chave restrita
+-- configurada em SUPABASE_LEADS_INSERT_KEY.

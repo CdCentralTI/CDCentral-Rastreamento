@@ -181,11 +181,15 @@ No frontend e backend, o lead precisa ter:
 O endpoint possui proteções simples contra abuso:
 
 - validação de origem por CORS;
+- bloqueio de requisições cross-site sinalizadas por `Sec-Fetch-Site`;
+- exigência de `Origin` válido em produção;
 - limite de tentativas por IP;
+- limite complementar por WhatsApp informado;
 - campo honeypot `empresa`;
 - verificação de tempo mínimo de preenchimento via `startedAt`.
 - limite de tamanho do payload JSON;
 - rejeição de content types inesperados;
+- rejeição de JSON que não seja objeto;
 - timeout na chamada ao Supabase.
 
 Observação importante: o rate limit atual é em memória e funciona como proteção básica. Em ambiente serverless, ele não é compartilhado entre instâncias. Para tráfego maior ou risco real de abuso, use uma proteção externa, como Vercel Firewall, Upstash Redis, Edge Config/KV ou um serviço equivalente.
@@ -221,11 +225,14 @@ Exemplo:
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=sb_secret_insert_key_replace_me
-# Alternativa aceita pela API, se voce ja usa esse nome:
+# Fallback aceito apenas fora de producao ou com opt-in explicito:
 # SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# ALLOW_SUPABASE_SERVICE_ROLE_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
 SITE_URL=https://your-site.com
 ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
+# Use 1 apenas se houver uma integracao server-to-server controlada sem Origin.
+# ALLOW_MISSING_ORIGIN=0
 ```
 
 ### Descrição das variáveis
@@ -234,7 +241,7 @@ ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
   URL do projeto no Supabase.
 
 - `SUPABASE_LEADS_INSERT_KEY`
-  Chave server-side usada pela API para inserir leads. A API tambem aceita `SUPABASE_SERVICE_ROLE_KEY` como fallback, que ja e o nome usado em alguns ambientes locais. Nao use chave publishable/anon aqui e nao exponha essa variavel no frontend.
+  Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para insercao. A API so aceita `SUPABASE_SERVICE_ROLE_KEY` como fallback fora de producao ou quando `ALLOW_SUPABASE_SERVICE_ROLE_FALLBACK=1` estiver configurado explicitamente. Nao use chave publishable/anon aqui e nao exponha essa variavel no frontend.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -244,6 +251,12 @@ ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
 
 - `ALLOWED_ORIGINS`
   Lista de origens extras liberadas no CORS, separadas por vírgula.
+
+- `ALLOW_MISSING_ORIGIN`
+  Mantem bloqueadas, por padrao, requisicoes de producao sem header `Origin`. Use `1` somente para integracoes server-to-server controladas.
+
+- `ALLOW_SUPABASE_SERVICE_ROLE_FALLBACK`
+  Permite fallback para `SUPABASE_SERVICE_ROLE_KEY` em producao. Evite manter ativado; prefira uma chave dedicada e com menor privilegio.
 
 ## Como rodar localmente
 
@@ -278,6 +291,7 @@ Pontos importantes na publicação:
 - garantir que o domínio final esteja em `SITE_URL`;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
+- manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
 - validar se a tabela do Supabase existe e aceita os campos esperados.
 
 ## Limite conhecido

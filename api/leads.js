@@ -6,49 +6,64 @@ const { HttpError, createRateLimiter, readJsonBody } = require("../lib/http-util
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const CONTACT_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CONTACT_RATE_LIMIT_MAX_REQUESTS = 3;
 const MIN_FORM_FILL_TIME_MS = 1500;
 const MAX_FORM_AGE_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 16 * 1024;
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.";
 const TRUST_PROXY_HEADERS = process.env.VERCEL === "1" || process.env.TRUST_PROXY_HEADERS === "1";
+const IS_DEPLOYED_RUNTIME = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+const REQUIRE_REQUEST_ORIGIN =
+  process.env.REQUIRE_REQUEST_ORIGIN === "1" || (process.env.ALLOW_MISSING_ORIGIN !== "1" && IS_DEPLOYED_RUNTIME);
+const ALLOW_LOCAL_ORIGINS = process.env.ALLOW_LOCAL_ORIGINS === "1" || !IS_DEPLOYED_RUNTIME;
+const LOCAL_ALLOWED_ORIGINS = ["http://127.0.0.1:4173", "http://localhost:4173"];
 
 const isLeadRateLimited = createRateLimiter({
   windowMs: RATE_LIMIT_WINDOW_MS,
   maxRequests: RATE_LIMIT_MAX_REQUESTS,
 });
 
-const getAllowedOrigin = (req) => {
-  const origin = String(req.headers.origin || "");
+const isLeadContactRateLimited = createRateLimiter({
+  windowMs: CONTACT_RATE_LIMIT_WINDOW_MS,
+  maxRequests: CONTACT_RATE_LIMIT_MAX_REQUESTS,
+});
+
+const normalizeOrigin = (value) => {
+  const origin = String(value || "").trim();
   if (!origin) {
     return "";
   }
 
-  const currentHost = String(req.headers["x-forwarded-host"] || req.headers.host || "").toLowerCase();
-  const explicitOrigins = [
-    process.env.SITE_URL,
-    process.env.ALLOWED_ORIGINS,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
-    "http://127.0.0.1:4173",
-    "http://localhost:4173",
-  ]
-    .flatMap((value) => String(value || "").split(","))
-    .map((value) => value.trim())
-    .filter(Boolean);
-
   try {
     const originUrl = new URL(origin);
-    if (currentHost && originUrl.host.toLowerCase() === currentHost) {
-      return origin;
-    }
-
-    if (explicitOrigins.includes(origin)) {
-      return origin;
-    }
+    return `${originUrl.protocol}//${originUrl.host}`;
   } catch (error) {
     return "";
   }
+};
 
-  return "";
+const getConfiguredOrigins = () => {
+  const configuredOrigins = [
+    process.env.SITE_URL,
+    process.env.ALLOWED_ORIGINS,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
+    ALLOW_LOCAL_ORIGINS ? LOCAL_ALLOWED_ORIGINS.join(",") : "",
+  ]
+    .flatMap((value) => String(value || "").split(","))
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+  return new Set(configuredOrigins);
+};
+
+const getAllowedOrigin = (req) => {
+  const origin = normalizeOrigin(req.headers.origin);
+  if (!origin) {
+    return "";
+  }
+
+  return getConfiguredOrigins().has(origin) ? origin : "";
 };
 
 const normalizeIpCandidate = (value) => {
@@ -94,17 +109,24 @@ const getClientIp = (req) => {
   return socketIp || "unknown";
 };
 
+const isCrossSiteFetch = (req) => {
+  return String(req.headers["sec-fetch-site"] || "").toLowerCase() === "cross-site";
+};
+
 const sendJson = (req, res, statusCode, payload) => {
   const allowedOrigin = getAllowedOrigin(req);
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   res.setHeader("Vary", "Origin");
 
   if (allowedOrigin) {
     res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Max-Age", "600");
   }
 
   if (statusCode === 204) {
@@ -141,8 +163,9 @@ const getStorageErrorStatusCode = (error) => {
 };
 
 module.exports = async (req, res) => {
-  const origin = String(req.headers.origin || "");
-  if (origin && !getAllowedOrigin(req)) {
+  const origin = normalizeOrigin(req.headers.origin);
+
+  if (isCrossSiteFetch(req) || (origin && !getAllowedOrigin(req)) || (!origin && REQUIRE_REQUEST_ORIGIN)) {
     sendJson(req, res, 403, {
       message: GENERIC_ERROR_MESSAGE,
     });
@@ -193,6 +216,13 @@ module.exports = async (req, res) => {
       sendJson(req, res, 422, {
         message: "Preencha nome, WhatsApp, tipo e quantidade de veiculos corretamente.",
         fields: validation.errors,
+      });
+      return;
+    }
+
+    if (isLeadContactRateLimited(lead.whatsapp)) {
+      sendJson(req, res, 429, {
+        message: "Muitas tentativas em sequencia. Aguarde um instante e tente novamente.",
       });
       return;
     }

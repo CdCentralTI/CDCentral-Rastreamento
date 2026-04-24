@@ -1,0 +1,11 @@
+.claude/
+.env
+.env.*
+.git/
+chrome-profile/
+exports/
+README.md
+scripts/
+server-*.log
+serve-local.js
+supabase/

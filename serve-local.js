@@ -7,6 +7,13 @@ const root = path.resolve(__dirname);
 const rootBoundary = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
 const port = 4173;
 const blockedStaticSegments = new Set([".git", ".vercel", "chrome-profile", "exports", "node_modules"]);
+const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "X-Frame-Options": "DENY",
+  "Cross-Origin-Opener-Policy": "same-origin",
+};
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -52,6 +59,14 @@ const loadEnvFile = (filename) => {
 loadEnvFile(".env");
 loadEnvFile(".env.local");
 
+const sendText = (res, statusCode, message) => {
+  res.writeHead(statusCode, {
+    ...securityHeaders,
+    "Content-Type": "text/plain; charset=utf-8",
+  });
+  res.end(message);
+};
+
 const isBlockedStaticPath = (filePath) => {
   const relativePath = path.relative(root, filePath);
   if (!relativePath || relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
@@ -68,8 +83,7 @@ http
     try {
       rawPath = decodeURIComponent((req.url || "/").split("?")[0]);
     } catch (error) {
-      res.writeHead(400);
-      res.end("Bad request");
+      sendText(res, 400, "Bad request");
       return;
     }
 
@@ -92,26 +106,24 @@ http
     const filePath = path.resolve(root, relativePath);
 
     if (!filePath.toLowerCase().startsWith(rootBoundary.toLowerCase())) {
-      res.writeHead(403);
-      res.end("Forbidden");
+      sendText(res, 403, "Forbidden");
       return;
     }
 
     if (isBlockedStaticPath(filePath)) {
-      res.writeHead(404);
-      res.end("Not found");
+      sendText(res, 404, "Not found");
       return;
     }
 
     fs.readFile(filePath, (error, data) => {
       if (error) {
-        res.writeHead(404);
-        res.end("Not found");
+        sendText(res, 404, "Not found");
         return;
       }
 
       const ext = path.extname(filePath).toLowerCase();
       res.writeHead(200, {
+        ...securityHeaders,
         "Content-Type": types[ext] || "application/octet-stream",
       });
       res.end(data);
