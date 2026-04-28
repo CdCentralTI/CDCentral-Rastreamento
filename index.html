@@ -25,12 +25,6 @@
     />
     <link rel="canonical" href="https://cdcentralrastreamento.com.br/" />
     <title>CDCentral Rastreamento | Segurança, controle e monitoramento em tempo real</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="icon" href="./CD CENTRAL IMG/LOGO DES.png" type="image/png" />
     <script type="application/ld+json">
@@ -444,6 +438,32 @@
               aria-hidden="true"
             />
             <input type="hidden" id="started_at" name="started_at" />
+            <input type="hidden" id="consent_version" name="consentVersion" value="2026-04-28" />
+
+            <div class="form-field form-field--turnstile">
+              <div class="turnstile-widget" id="turnstile-widget"></div>
+            </div>
+
+            <div class="form-field">
+              <label class="consent-field" for="consent">
+                <input
+                  id="consent"
+                  name="consent"
+                  type="checkbox"
+                  value="true"
+                  aria-describedby="error-consent"
+                  required
+                />
+                <span>
+                  Li e concordo com a
+                  <a href="./politica-de-privacidade.html" target="_blank" rel="noopener noreferrer">
+                    Política de Privacidade
+                  </a>
+                  e autorizo o contato.
+                </span>
+              </label>
+              <span class="field-error" id="error-consent" aria-live="polite"></span>
+            </div>
 
             <button class="btn" type="submit" id="lead-submit">Receber orçamento</button>
             <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
@@ -588,5 +608,10 @@
     </footer>
 
     <script src="./script.js"></script>
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&amp;render=explicit"
+      async
+      defer
+    ></script>
   </body>
 </html>

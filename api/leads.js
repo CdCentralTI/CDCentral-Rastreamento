@@ -11,6 +11,9 @@ const CONTACT_RATE_LIMIT_MAX_REQUESTS = 3;
 const MIN_FORM_FILL_TIME_MS = 1500;
 const MAX_FORM_AGE_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 16 * 1024;
+const CONSENT_VERSION = "2026-04-28";
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const TURNSTILE_TIMEOUT_MS = 5000;
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.";
 const TRUST_PROXY_HEADERS = process.env.VERCEL === "1" || process.env.TRUST_PROXY_HEADERS === "1";
 const IS_DEPLOYED_RUNTIME = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
@@ -22,11 +25,13 @@ const LOCAL_ALLOWED_ORIGINS = ["http://127.0.0.1:4173", "http://localhost:4173"]
 const isLeadRateLimited = createRateLimiter({
   windowMs: RATE_LIMIT_WINDOW_MS,
   maxRequests: RATE_LIMIT_MAX_REQUESTS,
+  keyPrefix: "rl:ip:",
 });
 
 const isLeadContactRateLimited = createRateLimiter({
   windowMs: CONTACT_RATE_LIMIT_WINDOW_MS,
   maxRequests: CONTACT_RATE_LIMIT_MAX_REQUESTS,
+  keyPrefix: "rl:wpp:",
 });
 
 const normalizeOrigin = (value) => {
@@ -119,6 +124,9 @@ const sendJson = (req, res, statusCode, payload) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy", "default-src 'none'");
   res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   res.setHeader("Vary", "Origin");
 
@@ -144,6 +152,57 @@ const isSuspiciousFormTiming = (startedAt) => {
   return !Number.isFinite(timestamp) || timestamp <= 0 || elapsed < MIN_FORM_FILL_TIME_MS || elapsed > MAX_FORM_AGE_MS;
 };
 
+const hasValidConsent = (body) => {
+  return body.consent === true && String(body.consentVersion || "").trim() === CONSENT_VERSION;
+};
+
+const getTurnstileToken = (body) => String(body["cf-turnstile-response"] || "").trim();
+
+const validateTurnstileToken = async (token, remoteIp) => {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY || "";
+
+  if (!secretKey) {
+    throw new HttpError(500, "Turnstile nao configurado.", "missing_turnstile_secret");
+  }
+
+  if (!token) {
+    throw new HttpError(400, "Verificacao de seguranca invalida.", "missing_turnstile_token");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TURNSTILE_TIMEOUT_MS);
+  const body = new URLSearchParams({
+    secret: secretKey,
+    response: token,
+  });
+
+  if (remoteIp && remoteIp !== "unknown") {
+    body.set("remoteip", remoteIp);
+  }
+
+  try {
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new HttpError(502, "Falha na verificacao de seguranca.", "turnstile_request_failed");
+    }
+
+    const result = await response.json().catch(() => ({}));
+    if (result.success !== true) {
+      throw new HttpError(400, "Verificacao de seguranca invalida.", "invalid_turnstile_token");
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 const logApiError = (error) => {
   console.error("Lead API error:", {
     name: error?.name || "Error",
@@ -164,6 +223,7 @@ const getStorageErrorStatusCode = (error) => {
 
 module.exports = async (req, res) => {
   const origin = normalizeOrigin(req.headers.origin);
+  const clientIp = getClientIp(req);
 
   if (isCrossSiteFetch(req) || (origin && !getAllowedOrigin(req)) || (!origin && REQUIRE_REQUEST_ORIGIN)) {
     sendJson(req, res, 403, {
@@ -185,7 +245,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    if (isLeadRateLimited(getClientIp(req))) {
+    if (await isLeadRateLimited(clientIp)) {
       sendJson(req, res, 429, {
         message: "Muitas tentativas em sequencia. Aguarde um instante e tente novamente.",
       });
@@ -209,6 +269,14 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (!hasValidConsent(body)) {
+      sendJson(req, res, 422, {
+        message: "Confirme a politica de privacidade para continuar.",
+        fields: ["consent"],
+      });
+      return;
+    }
+
     const lead = normalizeLead(body);
     const validation = validateLead(lead);
 
@@ -220,14 +288,21 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (isLeadContactRateLimited(lead.whatsapp)) {
+    if (await isLeadContactRateLimited(lead.whatsapp)) {
       sendJson(req, res, 429, {
         message: "Muitas tentativas em sequencia. Aguarde um instante e tente novamente.",
       });
       return;
     }
 
-    await saveLeadToSupabase(lead);
+    await validateTurnstileToken(getTurnstileToken(body), clientIp);
+
+    await saveLeadToSupabase({
+      ...lead,
+      consent_at: new Date().toISOString(),
+      consent_version: CONSENT_VERSION,
+      consent_ip: clientIp,
+    });
 
     sendJson(req, res, 201, {
       message: "Lead recebido com sucesso.",

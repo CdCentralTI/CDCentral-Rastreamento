@@ -21,6 +21,8 @@ O site foi pensado para:
 - Node.js para servidor local
 - função HTTP em `api/leads.js`
 - Supabase como armazenamento dos leads
+- Upstash Redis ou Vercel KV compatível com Upstash para rate limit distribuído
+- Cloudflare Turnstile para verificação antiabuso
 
 ## Estrutura do projeto
 
@@ -32,16 +34,23 @@ O site foi pensado para:
 |-- politica-de-privacidade.html
 |-- termos-de-uso.html
 |-- serve-local.js
+|-- package.json
+|-- package-lock.json
 |-- robots.txt
 |-- sitemap.xml
 |-- vercel.json
+|-- .well-known/
+|   `-- security.txt
 |-- api/
-|   `-- leads.js
+|   |-- csp-report.js
+|   |-- leads.js
+|   `-- public-config.js
 |-- lib/
 |   |-- http-utils.js
 |   `-- leads-service.js
 |-- supabase/
 |   `-- leads-schema.sql
+|-- fonts/
 |-- CD CENTRAL IMG/
 `-- .env.example
 ```
@@ -60,7 +69,7 @@ O site foi pensado para:
   menu mobile, animação de reveal, ano automático no rodapé, máscara do WhatsApp, validação do formulário e envio para `/api/leads`.
 
 - [serve-local.js](./serve-local.js)
-  Servidor local simples para desenvolvimento. Serve os arquivos estáticos e encaminha `/api/leads` para o handler da API.
+  Servidor local simples para desenvolvimento. Serve os arquivos estáticos e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report` para os handlers da API.
 
 - [vercel.json](./vercel.json)
   Configuração mínima de produção para headers de segurança, cache de imagens e cache desativado em API.
@@ -75,7 +84,7 @@ O site foi pensado para:
   Endpoint responsável por validar requisições, aplicar CORS, limitar tentativas e persistir o lead.
 
 - [lib/http-utils.js](./lib/http-utils.js)
-  Utilitários de parsing JSON, erro HTTP controlado e rate limit em memória para o endpoint.
+  Utilitários de parsing JSON, erro HTTP controlado e rate limit distribuído com Redis. Fora de produção, se Redis não estiver configurado, usa fallback em memória.
 
 - [lib/leads-service.js](./lib/leads-service.js)
   Regras de normalização, validação e envio dos dados para o Supabase.
@@ -159,13 +168,16 @@ Os campos principais do formulário são:
 - `whatsapp`
 - `tipo`
 - `veiculos`
+- `consent`
+- `consentVersion`
+- `cf-turnstile-response`
 
 O backend também reconhece campos auxiliares de proteção quando presentes:
 
 - `empresa`
 - `startedAt`
 
-No fluxo do site, `startedAt` é enviado pelo formulário e usado como sinal anti-spam. Chamadas diretas à API sem esse campo recebem erro genérico.
+No fluxo do site, `startedAt` é enviado pelo formulário e usado como sinal anti-spam. O token `cf-turnstile-response` é gerado pelo Cloudflare Turnstile e validado no backend antes de gravar o lead.
 
 ### Regras de validação
 
@@ -174,7 +186,9 @@ No frontend e backend, o lead precisa ter:
 - nome com ao menos 3 caracteres;
 - WhatsApp com 10 ou 11 dígitos;
 - tipo preenchido;
-- quantidade de veículos maior ou igual a 1.
+- quantidade de veículos maior ou igual a 1;
+- consentimento LGPD marcado com a versão vigente;
+- token Turnstile válido.
 
 ### Proteções existentes
 
@@ -183,16 +197,17 @@ O endpoint possui proteções simples contra abuso:
 - validação de origem por CORS;
 - bloqueio de requisições cross-site sinalizadas por `Sec-Fetch-Site`;
 - exigência de `Origin` válido em produção;
-- limite de tentativas por IP;
-- limite complementar por WhatsApp informado;
+- rate limit distribuído por IP com chave `rl:ip:<ip>` de 5 requisições a cada 10 minutos;
+- rate limit distribuído por WhatsApp com chave `rl:wpp:<digits>` de 3 requisições a cada 24 horas;
+- fallback em memória apenas fora de produção quando Redis/KV não estiver configurado;
+- validação server-side do Cloudflare Turnstile;
+- consentimento LGPD obrigatório e persistido com data, versão e IP;
 - campo honeypot `empresa`;
 - verificação de tempo mínimo de preenchimento via `startedAt`.
 - limite de tamanho do payload JSON;
 - rejeição de content types inesperados;
 - rejeição de JSON que não seja objeto;
 - timeout na chamada ao Supabase.
-
-Observação importante: o rate limit atual é em memória e funciona como proteção básica. Em ambiente serverless, ele não é compartilhado entre instâncias. Para tráfego maior ou risco real de abuso, use uma proteção externa, como Vercel Firewall, Upstash Redis, Edge Config/KV ou um serviço equivalente.
 
 ## Fluxo da API
 
@@ -225,14 +240,15 @@ Exemplo:
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=sb_secret_insert_key_replace_me
-# Fallback aceito apenas fora de producao ou com opt-in explicito:
-# SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-# ALLOW_SUPABASE_SERVICE_ROLE_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
-SITE_URL=https://your-site.com
-ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
+SITE_URL=https://cdcentralrastreamento.com.br
+ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br,https://your-preview.vercel.app
 # Use 1 apenas se houver uma integracao server-to-server controlada sem Origin.
 # ALLOW_MISSING_ORIGIN=0
+TURNSTILE_SITE_KEY=0x4AAAA_public_site_key
+TURNSTILE_SECRET_KEY=0x4AAAA_private_secret_key
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 ```
 
 ### Descrição das variáveis
@@ -241,7 +257,7 @@ ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
   URL do projeto no Supabase.
 
 - `SUPABASE_LEADS_INSERT_KEY`
-  Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para insercao. A API so aceita `SUPABASE_SERVICE_ROLE_KEY` como fallback fora de producao ou quando `ALLOW_SUPABASE_SERVICE_ROLE_FALLBACK=1` estiver configurado explicitamente. Nao use chave publishable/anon aqui e nao exponha essa variavel no frontend.
+  Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para inserção. Não use chave publishable/anon aqui e não exponha essa variável no frontend.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -255,8 +271,17 @@ ALLOWED_ORIGINS=https://your-site.com,https://your-preview.vercel.app
 - `ALLOW_MISSING_ORIGIN`
   Mantem bloqueadas, por padrao, requisicoes de producao sem header `Origin`. Use `1` somente para integracoes server-to-server controladas.
 
-- `ALLOW_SUPABASE_SERVICE_ROLE_FALLBACK`
-  Permite fallback para `SUPABASE_SERVICE_ROLE_KEY` em producao. Evite manter ativado; prefira uma chave dedicada e com menor privilegio.
+- `TURNSTILE_SITE_KEY`
+  Chave pública do widget Cloudflare Turnstile. Ela é entregue ao navegador por `/api/public-config`.
+
+- `TURNSTILE_SECRET_KEY`
+  Chave secreta server-side usada para validar `cf-turnstile-response`. Não exponha no frontend.
+
+- `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
+  Credenciais REST do Upstash Redis para rate limit distribuído.
+
+- `KV_REST_API_URL` e `KV_REST_API_TOKEN`
+  Alternativa compatível quando o Redis/KV da Vercel fornecer credenciais REST.
 
 ## Como rodar localmente
 
@@ -267,14 +292,20 @@ Pré-requisito recomendado:
 ### Passos
 
 1. Crie um `.env.local` com base no `.env.example`.
-2. Preencha as credenciais do Supabase.
-3. Inicie o servidor local:
+2. Preencha as credenciais do Supabase, Turnstile e, se quiser testar Redis localmente, Upstash/KV.
+3. Instale as dependências:
+
+```powershell
+npm install
+```
+
+4. Inicie o servidor local:
 
 ```powershell
 node serve-local.js
 ```
 
-4. Acesse:
+5. Acesse:
 
 ```text
 http://127.0.0.1:4173
@@ -292,7 +323,21 @@ Pontos importantes na publicação:
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
-- validar se a tabela do Supabase existe e aceita os campos esperados.
+- configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`;
+- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` ou as variáveis `KV_REST_API_URL` e `KV_REST_API_TOKEN`;
+- aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
+
+## Testes manuais de segurança
+
+Antes de publicar, confirme:
+
+- `POST /api/leads` sem `Origin` em produção retorna `403`;
+- `POST /api/leads` com `cf-turnstile-response` inválido retorna `400`;
+- `POST /api/leads` sem `consent: true` retorna `422`;
+- mais de 5 `POST /api/leads` em 10 minutos para o mesmo IP retorna `429`;
+- o HTML servido não contém chaves Supabase nem segredos;
+- `/.well-known/security.txt` responde com contato e expiração futura;
+- a CSP não permite Google Fonts e permite Cloudflare Turnstile em `script-src`, `frame-src` e `connect-src`.
 
 ## Limite conhecido
 

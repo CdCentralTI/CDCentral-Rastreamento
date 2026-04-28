@@ -1,5 +1,6 @@
 chrome-profile/
 exports/
+node_modules/
 server-out.log
 server-err.log
 .env

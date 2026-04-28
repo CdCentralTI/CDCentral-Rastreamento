@@ -7,6 +7,7 @@ const root = path.resolve(__dirname);
 const rootBoundary = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
 const port = 4173;
 const blockedStaticSegments = new Set([".git", ".vercel", "chrome-profile", "exports", "node_modules"]);
+const allowedDotSegments = new Set([".well-known"]);
 const securityHeaders = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -25,6 +26,7 @@ const types = {
   ".svg": "image/svg+xml",
   ".webp": "image/webp",
   ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
   ".json": "application/json; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
   ".xml": "application/xml; charset=utf-8",
@@ -73,8 +75,16 @@ const isBlockedStaticPath = (filePath) => {
     return false;
   }
 
-  return relativePath.split(path.sep).some((segment) => segment.startsWith(".") || blockedStaticSegments.has(segment));
+  return relativePath
+    .split(path.sep)
+    .some((segment) => (segment.startsWith(".") && !allowedDotSegments.has(segment)) || blockedStaticSegments.has(segment));
 };
+
+const apiHandlers = new Map([
+  ["/api/leads", leadHandler],
+  ["/api/public-config", require("./api/public-config")],
+  ["/api/csp-report", require("./api/csp-report")],
+]);
 
 http
   .createServer((req, res) => {
@@ -87,8 +97,9 @@ http
       return;
     }
 
-    if (rawPath === "/api/leads") {
-      Promise.resolve(leadHandler(req, res)).catch((error) => {
+    const apiHandler = apiHandlers.get(rawPath);
+    if (apiHandler) {
+      Promise.resolve(apiHandler(req, res)).catch((error) => {
         res.writeHead(500, {
           "Content-Type": "application/json; charset=utf-8",
         });

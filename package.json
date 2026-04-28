@@ -1,0 +1,10 @@
+{
+  "name": "cdcentral-rastreamento",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing estatica da CDCentral Rastreamento com API serverless para leads.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@upstash/redis": "1.37.0"
+  }
+}

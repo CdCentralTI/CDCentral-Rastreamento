@@ -9,19 +9,24 @@ const submitButton = document.querySelector("#lead-submit");
 const feedbackNode = document.querySelector("#form-feedback");
 const whatsappInput = document.querySelector("#whatsapp");
 const startedAtInput = document.querySelector("#started_at");
+const turnstileNode = document.querySelector("#turnstile-widget");
 const keepHeaderScrolled = document.body.classList.contains("legal-page");
 
 const DESKTOP_NAV_BREAKPOINT = 980;
 const SUBMIT_TIMEOUT_MS = 10000;
 const SUBMIT_IDLE_TEXT = "Receber orçamento";
 const SUBMIT_LOADING_TEXT = "Enviando...";
+const CONSENT_VERSION = "2026-04-28";
 const GENERIC_SUBMIT_ERROR = "Não foi possível enviar agora. Tente novamente em instantes.";
+let turnstileWidgetId = null;
+let turnstileReady = false;
 
 const fieldNodes = {
   nome: document.querySelector("#nome"),
   whatsapp: document.querySelector("#whatsapp"),
   tipo: document.querySelector("#tipo"),
   veiculos: document.querySelector("#veiculos"),
+  consent: document.querySelector("#consent"),
 };
 
 const fieldErrorNodes = {
@@ -29,6 +34,7 @@ const fieldErrorNodes = {
   whatsapp: document.querySelector("#error-whatsapp"),
   tipo: document.querySelector("#error-tipo"),
   veiculos: document.querySelector("#error-veiculos"),
+  consent: document.querySelector("#error-consent"),
 };
 
 const fieldMessages = {
@@ -36,6 +42,7 @@ const fieldMessages = {
   whatsapp: "Informe um WhatsApp válido com DDD.",
   tipo: "Selecione o tipo de atendimento.",
   veiculos: "Informe uma quantidade entre 1 e 9999 veículos.",
+  consent: "Confirme a Política de Privacidade para continuar.",
 };
 
 const setHeaderState = () => {
@@ -70,6 +77,15 @@ const formatWhatsapp = (value) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+const getTurnstileToken = (formData) => {
+  const formToken = String(formData.get("cf-turnstile-response") || "").trim();
+  if (formToken || !window.turnstile || turnstileWidgetId === null) {
+    return formToken;
+  }
+
+  return String(window.turnstile.getResponse(turnstileWidgetId) || "").trim();
+};
+
 const getLeadPayload = (formData) => ({
   nome: String(formData.get("nome") || "").trim().replace(/\s+/g, " "),
   whatsapp: String(formData.get("whatsapp") || "").trim(),
@@ -77,6 +93,9 @@ const getLeadPayload = (formData) => ({
   veiculos: String(formData.get("veiculos") || "").trim(),
   empresa: String(formData.get("empresa") || "").trim(),
   startedAt: String(formData.get("started_at") || "").trim(),
+  consent: formData.get("consent") === "true",
+  consentVersion: String(formData.get("consentVersion") || CONSENT_VERSION).trim(),
+  "cf-turnstile-response": getTurnstileToken(formData),
 });
 
 const validateLeadPayload = (payload) => {
@@ -95,6 +114,9 @@ const validateLeadPayload = (payload) => {
   }
   if (!Number.isInteger(vehiclesNumber) || vehiclesNumber < 1 || vehiclesNumber > 9999) {
     errors.veiculos = fieldMessages.veiculos;
+  }
+  if (payload.consent !== true) {
+    errors.consent = fieldMessages.consent;
   }
 
   return errors;
@@ -206,6 +228,52 @@ const fetchWithTimeout = async (url, options) => {
   }
 };
 
+const loadPublicConfig = async () => {
+  const response = await fetchWithTimeout("/api/public-config", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  const config = await response.json().catch(() => ({}));
+  if (!response.ok || !config.turnstileSiteKey) {
+    throw new Error(GENERIC_SUBMIT_ERROR);
+  }
+
+  return config;
+};
+
+const renderTurnstile = async () => {
+  if (!turnstileNode || !window.turnstile || turnstileWidgetId !== null) {
+    return;
+  }
+
+  try {
+    const config = await loadPublicConfig();
+    turnstileWidgetId = window.turnstile.render(turnstileNode, {
+      sitekey: config.turnstileSiteKey,
+      theme: "dark",
+      callback: () => {
+        turnstileReady = true;
+        setFeedback("", "");
+      },
+      "expired-callback": () => {
+        turnstileReady = false;
+      },
+      "error-callback": () => {
+        turnstileReady = false;
+        setFeedback("Não foi possível carregar a verificação de segurança. Atualize a página e tente novamente.", "error");
+      },
+    });
+  } catch (error) {
+    turnstileReady = false;
+    setFeedback("Não foi possível carregar a verificação de segurança. Atualize a página e tente novamente.", "error");
+  }
+};
+
+window.onTurnstileLoad = renderTurnstile;
+
 const applyServerFieldErrors = (fields) => {
   if (!Array.isArray(fields)) {
     return;
@@ -250,6 +318,11 @@ const handleLeadSubmit = async (event) => {
     return;
   }
 
+  if (!turnstileReady || !payload["cf-turnstile-response"]) {
+    setFeedback("Confirme a verificação de segurança para continuar.", "error");
+    return;
+  }
+
   setSubmitLoading(true);
 
   try {
@@ -271,6 +344,10 @@ const handleLeadSubmit = async (event) => {
     leadForm.reset();
     if (whatsappInput) {
       whatsappInput.value = "";
+    }
+    if (window.turnstile && turnstileWidgetId !== null) {
+      window.turnstile.reset(turnstileWidgetId);
+      turnstileReady = false;
     }
     resetStartedAt();
   } catch (error) {
@@ -322,7 +399,7 @@ Object.entries(fieldNodes).forEach(([fieldName, fieldNode]) => {
     return;
   }
 
-  const eventName = fieldNode.tagName === "SELECT" ? "change" : "input";
+  const eventName = fieldNode.tagName === "SELECT" || fieldNode.type === "checkbox" ? "change" : "input";
   fieldNode.addEventListener(eventName, () => {
     clearFieldError(fieldName);
   });
@@ -351,4 +428,8 @@ if ("IntersectionObserver" in window && revealElements.length > 0) {
 
 if (leadForm) {
   leadForm.addEventListener("submit", handleLeadSubmit);
+}
+
+if (turnstileNode && window.turnstile) {
+  renderTurnstile();
 }

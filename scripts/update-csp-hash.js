@@ -18,18 +18,22 @@ if (!jsonLdMatch) {
 const hash = crypto.createHash("sha256").update(jsonLdMatch[1]).digest("base64");
 const hashDirective = `'sha256-${hash}'`;
 const vercelConfig = JSON.parse(fs.readFileSync(vercelPath, "utf8"));
-const rootHeaderConfig = vercelConfig.headers.find((entry) => entry.source === "/(.*)");
-const cspHeader = rootHeaderConfig?.headers?.find((entry) => entry.key === "Content-Security-Policy");
+const cspHeaders = vercelConfig.headers
+  .filter((entry) => entry.source === "/(.*)")
+  .flatMap((entry) => entry.headers || [])
+  .filter((entry) => ["Content-Security-Policy", "Content-Security-Policy-Report-Only"].includes(entry.key));
 
-if (!cspHeader) {
+if (cspHeaders.length === 0) {
   throw new Error("Content-Security-Policy header not found in vercel.json.");
 }
 
-if (/'sha256-[^']+'/.test(cspHeader.value)) {
-  cspHeader.value = cspHeader.value.replace(/'sha256-[^']+'/g, hashDirective);
-} else {
-  cspHeader.value = cspHeader.value.replace("script-src 'self'", `script-src 'self' ${hashDirective}`);
-}
+cspHeaders.forEach((cspHeader) => {
+  if (/'sha256-[^']+'/.test(cspHeader.value)) {
+    cspHeader.value = cspHeader.value.replace(/'sha256-[^']+'/g, hashDirective);
+  } else {
+    cspHeader.value = cspHeader.value.replace("script-src 'self'", `script-src 'self' ${hashDirective}`);
+  }
+});
 
 fs.writeFileSync(vercelPath, `${JSON.stringify(vercelConfig, null, 2)}\n`);
 console.log(`Updated Content-Security-Policy JSON-LD hash: ${hashDirective}`);

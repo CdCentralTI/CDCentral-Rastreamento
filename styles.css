@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./fonts/manrope-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("./fonts/sora-latin.woff2") format("woff2");
+}
+
 :root {
   --bg-main: #0b0b0b;
   --bg-soft: #111111;
@@ -770,7 +786,7 @@ a:focus-visible {
   color: #251200;
   background: linear-gradient(135deg, var(--primary), var(--amber));
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .benefit-card h3 {
@@ -852,7 +868,7 @@ a:focus-visible {
   font-weight: 700;
 }
 
-.lead-form input,
+.lead-form input:not([type="checkbox"]),
 .lead-form select {
   width: 100%;
   min-height: 3rem;
@@ -865,11 +881,11 @@ a:focus-visible {
   font-size: 0.95rem;
 }
 
-.lead-form input::placeholder {
+.lead-form input:not([type="checkbox"])::placeholder {
   color: rgba(255, 248, 241, 0.48);
 }
 
-.lead-form input[aria-invalid="true"],
+.lead-form input:not([type="checkbox"])[aria-invalid="true"],
 .lead-form select[aria-invalid="true"] {
   border-color: rgba(255, 92, 92, 0.72);
   box-shadow: 0 0 0 4px rgba(255, 92, 92, 0.12);
@@ -877,6 +893,41 @@ a:focus-visible {
 
 .lead-form .btn {
   margin-top: 0.35rem;
+}
+
+.form-field--turnstile {
+  min-height: 4.1rem;
+}
+
+.turnstile-widget {
+  min-height: 4.1rem;
+}
+
+.consent-field {
+  display: grid;
+  grid-template-columns: 1.05rem 1fr;
+  gap: 0.68rem;
+  align-items: start;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.consent-field input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0.18rem 0 0;
+  accent-color: var(--primary);
+}
+
+.consent-field input[aria-invalid="true"] {
+  outline: 3px solid rgba(255, 92, 92, 0.18);
+  outline-offset: 3px;
+}
+
+.consent-field a {
+  color: var(--amber-soft);
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
 }
 
 .bot-trap {
