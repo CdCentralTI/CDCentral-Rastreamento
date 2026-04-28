@@ -5,14 +5,15 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
-const indexPath = path.join(root, "index.html");
+const publicRoot = path.join(root, "public");
+const indexPath = path.join(publicRoot, "index.html");
 const vercelPath = path.join(root, "vercel.json");
 
 const indexHtml = fs.readFileSync(indexPath, "utf8");
 const jsonLdMatch = indexHtml.match(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/);
 
 if (!jsonLdMatch) {
-  throw new Error("JSON-LD script block not found in index.html.");
+  throw new Error("JSON-LD script block not found in public/index.html.");
 }
 
 const hash = crypto.createHash("sha256").update(jsonLdMatch[1]).digest("base64");

@@ -1,4 +1,38 @@
 {
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/public/index.html"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/public/index.html"
+    },
+    {
+      "source": "/politica-de-privacidade.html",
+      "destination": "/public/politica-de-privacidade.html"
+    },
+    {
+      "source": "/termos-de-uso.html",
+      "destination": "/public/termos-de-uso.html"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/public/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/public/sitemap.xml"
+    },
+    {
+      "source": "/.well-known/:path*",
+      "destination": "/public/.well-known/:path*"
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "/public/assets/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

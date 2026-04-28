@@ -28,11 +28,6 @@ O site foi pensado para:
 
 ```text
 .
-|-- index.html
-|-- assets/css/styles.css
-|-- assets/js/script.js
-|-- politica-de-privacidade.html
-|-- termos-de-uso.html
 |-- server.js
 |-- serve-local.js
 |-- package.json
@@ -40,11 +35,7 @@ O site foi pensado para:
 |-- config/pm2/ecosystem.config.cjs
 |-- docs/deploy/HOSTINGER.md
 |-- docs/deploy/VPS.md
-|-- robots.txt
-|-- sitemap.xml
 |-- vercel.json
-|-- .well-known/
-|   `-- security.txt
 |-- api/
 |   |-- csp-report.js
 |   |-- leads.js
@@ -55,21 +46,32 @@ O site foi pensado para:
 |   `-- leads-service.js
 |-- database/supabase/
 |   `-- leads-schema.sql
-|-- assets/fonts/
-|-- assets/images/cdcentral/
+|-- public/
+|   |-- index.html
+|   |-- politica-de-privacidade.html
+|   |-- termos-de-uso.html
+|   |-- robots.txt
+|   |-- sitemap.xml
+|   |-- .well-known/
+|   |   `-- security.txt
+|   `-- assets/
+|       |-- css/styles.css
+|       |-- js/script.js
+|       |-- fonts/
+|       `-- images/cdcentral/
 `-- .env.example
 ```
 
 ## Arquivos principais
 
-- [index.html](./index.html)
+- [public/index.html](./public/index.html)
   Página principal do site. Contém:
   hero, soluções, benefícios, como funciona, contato, CTA final e rodapé.
 
-- [assets/css/styles.css](./assets/css/styles.css)
+- [public/assets/css/styles.css](./public/assets/css/styles.css)
   Todo o visual do projeto: layout, responsividade, animações, fundo, cards, formulário, menu mobile e footer.
 
-- [assets/js/script.js](./assets/js/script.js)
+- [public/assets/js/script.js](./public/assets/js/script.js)
   Controla:
   menu mobile, animação de reveal, ano automático no rodapé, máscara do WhatsApp, validação do formulário e envio para `/api/leads`.
 
@@ -86,9 +88,9 @@ O site foi pensado para:
   Guias de deploy para Hostinger Node.js Web App e VPS.
 
 - [scripts/update-csp-hash.js](./scripts/update-csp-hash.js)
-  Atualiza o hash CSP do JSON-LD inline quando o bloco estruturado em [index.html](./index.html) for editado.
+  Atualiza o hash CSP do JSON-LD inline quando o bloco estruturado em [public/index.html](./public/index.html) for editado.
 
-- [robots.txt](./robots.txt) e [sitemap.xml](./sitemap.xml)
+- [public/robots.txt](./public/robots.txt) e [public/sitemap.xml](./public/sitemap.xml)
   Arquivos de SEO técnico. Antes de publicar, confirme se o domínio configurado está correto.
 
 - [api/leads.js](./api/leads.js)
@@ -108,7 +110,7 @@ O site foi pensado para:
 
 ## Seções da landing page
 
-O conteúdo do site está centralizado em [index.html](./index.html).
+O conteúdo do site está centralizado em [public/index.html](./public/index.html).
 
 As principais áreas são:
 
@@ -134,7 +136,7 @@ As principais áreas são:
 
 ### Textos e links
 
-Edite diretamente [index.html](./index.html).
+Edite diretamente [public/index.html](./public/index.html).
 
 Exemplos de mudança:
 
@@ -146,7 +148,7 @@ Exemplos de mudança:
 
 ### Estilo visual
 
-Edite [assets/css/styles.css](./assets/css/styles.css).
+Edite [public/assets/css/styles.css](./public/assets/css/styles.css).
 
 Os tokens principais ficam no seletor `:root`, como:
 
@@ -161,7 +163,7 @@ Os breakpoints atuais cuidam de mobile, tablet e desktop.
 
 ### Comportamentos do frontend
 
-Edite [assets/js/script.js](./assets/js/script.js).
+Edite [public/assets/js/script.js](./public/assets/js/script.js).
 
 Hoje o script cobre:
 
@@ -372,7 +374,7 @@ O projeto deve ser publicado como aplicação Node.js permanente. Para Hostinger
 Pontos importantes na publicação:
 
 - configurar corretamente as variáveis de ambiente;
-- se editar o JSON-LD em [index.html](./index.html), rodar `node scripts/update-csp-hash.js` antes de deploy Vercel; no deploy Node.js, [server.js](./server.js) calcula o hash no startup;
+- se editar o JSON-LD em [public/index.html](./public/index.html), rodar `node scripts/update-csp-hash.js` antes de deploy Vercel; no deploy Node.js, [server.js](./server.js) calcula o hash no startup;
 - garantir que o domínio final esteja em `SITE_URL`;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
@@ -408,31 +410,31 @@ Este projeto atualmente é uma landing page de captação de leads. Ele ainda n�
 - testar o envio de lead até o Supabase;
 - verificar responsividade em mobile, tablet e desktop;
 - revisar páginas legais:
-  [politica-de-privacidade.html](./politica-de-privacidade.html)
+  [public/politica-de-privacidade.html](./public/politica-de-privacidade.html)
   e
-  [termos-de-uso.html](./termos-de-uso.html);
+  [public/termos-de-uso.html](./public/termos-de-uso.html);
 - confirmar se logos e imagens continuam corretos.
 
 ## Manutenção rápida
 
 ### Para trocar WhatsApp
 
-Procure por `wa.me` em [index.html](./index.html).
+Procure por `wa.me` em [public/index.html](./public/index.html).
 
 ### Para trocar Instagram
 
-Procure por `instagram.com/cdcentral.br` em [index.html](./index.html).
+Procure por `instagram.com/cdcentral.br` em [public/index.html](./public/index.html).
 
 ### Para trocar e-mail
 
-Procure por `mailto:` em [index.html](./index.html).
+Procure por `mailto:` em [public/index.html](./public/index.html).
 
 ### Para trocar o fundo visual
 
 O fundo é composto por:
 
 - gradientes aplicados no `body`;
-- elementos `.site-bg`, `.orb--left`, `.orb--right` e `.scan-lines` em [assets/css/styles.css](./assets/css/styles.css).
+- elementos `.site-bg`, `.orb--left`, `.orb--right` e `.scan-lines` em [public/assets/css/styles.css](./public/assets/css/styles.css).
 
 ## Observações
 

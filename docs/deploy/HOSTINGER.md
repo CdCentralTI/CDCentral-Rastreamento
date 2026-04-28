@@ -19,17 +19,18 @@ Suba o projeto com estes arquivos e pastas:
 
 ```text
 api/
-assets/images/cdcentral/
-assets/fonts/
 lib/
-.well-known/
-index.html
-assets/css/styles.css
-assets/js/script.js
-politica-de-privacidade.html
-termos-de-uso.html
-robots.txt
-sitemap.xml
+public/
+public/assets/images/cdcentral/
+public/assets/fonts/
+public/.well-known/
+public/assets/css/styles.css
+public/assets/js/script.js
+public/index.html
+public/politica-de-privacidade.html
+public/termos-de-uso.html
+public/robots.txt
+public/sitemap.xml
 server.js
 serve-local.js
 package.json
@@ -207,7 +208,7 @@ Resposta esperada: `400`.
 
 Erro 404 no site:
 
-- Confirme que `server.js` e `index.html` foram enviados na raiz da aplicacao.
+- Confirme que `server.js` foi enviado na raiz da aplicacao e que `public/index.html` existe no deploy.
 - Confirme que o entry file no hPanel e `server.js`.
 - Verifique se o dominio esta conectado a Node.js Web App, nao a uma pasta estatica antiga.
 

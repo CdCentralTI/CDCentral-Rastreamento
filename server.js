@@ -6,11 +6,12 @@ const http = require("http");
 const { isIP } = require("net");
 const path = require("path");
 
-const root = path.resolve(__dirname);
-const rootBoundary = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+const workspaceRoot = path.resolve(__dirname);
+const publicRoot = path.join(workspaceRoot, "public");
+const publicRootBoundary = publicRoot.endsWith(path.sep) ? publicRoot : `${publicRoot}${path.sep}`;
 
 const loadEnvFile = (filename) => {
-  const filePath = path.join(root, filename);
+  const filePath = path.join(workspaceRoot, filename);
   if (!fs.existsSync(filePath)) {
     return;
   }
@@ -59,8 +60,6 @@ const SHUTDOWN_TIMEOUT_MS = 10000;
 
 const PUBLIC_FILES = new Set([
   "index.html",
-  "styles.css",
-  "script.js",
   "assets/css/styles.css",
   "assets/js/script.js",
   "politica-de-privacidade.html",
@@ -171,7 +170,7 @@ const getJsonLdHashDirective = () => {
   }
 
   try {
-    const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+    const indexHtml = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
     const jsonLdMatch = indexHtml.match(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/);
     cachedJsonLdHashDirective = jsonLdMatch
       ? `'sha256-${crypto.createHash("sha256").update(jsonLdMatch[1]).digest("base64")}'`
@@ -405,14 +404,14 @@ const handleStatic = (req, res, pathname) => {
 
   const requestedPath = pathname === "/" ? "/index.html" : pathname;
   const relativePath = requestedPath.replace(/^[/\\]+/, "");
-  const filePath = path.resolve(root, relativePath);
+  const filePath = path.resolve(publicRoot, relativePath);
 
-  if (!filePath.toLowerCase().startsWith(rootBoundary.toLowerCase())) {
+  if (!filePath.toLowerCase().startsWith(publicRootBoundary.toLowerCase())) {
     sendText(req, res, 403, "Acesso negado.");
     return;
   }
 
-  const publicPath = toPosixPath(path.relative(root, filePath));
+  const publicPath = toPosixPath(path.relative(publicRoot, filePath));
   if (!isPublicStaticPath(publicPath)) {
     sendText(req, res, 404, "Arquivo nao encontrado.");
     return;
