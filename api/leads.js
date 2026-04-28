@@ -1,6 +1,7 @@
 "use strict";
 
 const { isIP } = require("net");
+const { getConsentVersion } = require("../lib/app-config");
 const { LeadStorageError, normalizeLead, validateLead, saveLeadToSupabase } = require("../lib/leads-service");
 const { HttpError, createRateLimiter, readJsonBody } = require("../lib/http-utils");
 
@@ -11,7 +12,11 @@ const CONTACT_RATE_LIMIT_MAX_REQUESTS = 3;
 const MIN_FORM_FILL_TIME_MS = 1500;
 const MAX_FORM_AGE_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 16 * 1024;
+<<<<<<< HEAD
 const CONSENT_VERSION = "2026-04-28";
+=======
+const CONSENT_VERSION = getConsentVersion();
+>>>>>>> 5b8dd71 (mundando para o node.js)
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const TURNSTILE_TIMEOUT_MS = 5000;
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.";
@@ -20,7 +25,12 @@ const IS_DEPLOYED_RUNTIME = process.env.VERCEL === "1" || process.env.NODE_ENV =
 const REQUIRE_REQUEST_ORIGIN =
   process.env.REQUIRE_REQUEST_ORIGIN === "1" || (process.env.ALLOW_MISSING_ORIGIN !== "1" && IS_DEPLOYED_RUNTIME);
 const ALLOW_LOCAL_ORIGINS = process.env.ALLOW_LOCAL_ORIGINS === "1" || !IS_DEPLOYED_RUNTIME;
-const LOCAL_ALLOWED_ORIGINS = ["http://127.0.0.1:4173", "http://localhost:4173"];
+const LOCAL_ALLOWED_ORIGINS = [
+  "http://127.0.0.1:3000",
+  "http://localhost:3000",
+  "http://127.0.0.1:4173",
+  "http://localhost:4173",
+];
 
 const isLeadRateLimited = createRateLimiter({
   windowMs: RATE_LIMIT_WINDOW_MS,
@@ -68,7 +78,22 @@ const getAllowedOrigin = (req) => {
     return "";
   }
 
-  return getConfiguredOrigins().has(origin) ? origin : "";
+  if (getConfiguredOrigins().has(origin)) {
+    return origin;
+  }
+
+  if (ALLOW_LOCAL_ORIGINS) {
+    try {
+      const originUrl = new URL(origin);
+      if (["localhost", "127.0.0.1", "::1"].includes(originUrl.hostname)) {
+        return origin;
+      }
+    } catch (error) {
+      return "";
+    }
+  }
+
+  return "";
 };
 
 const normalizeIpCandidate = (value) => {
@@ -214,7 +239,7 @@ const logApiError = (error) => {
 };
 
 const getStorageErrorStatusCode = (error) => {
-  if (error?.code === "missing_supabase_config") {
+  if (["missing_supabase_config", "invalid_supabase_config", "invalid_supabase_table", "unsafe_supabase_key"].includes(error?.code)) {
     return 500;
   }
 
@@ -288,6 +313,11 @@ module.exports = async (req, res) => {
       return;
     }
 
+<<<<<<< HEAD
+=======
+    await validateTurnstileToken(getTurnstileToken(body), clientIp);
+
+>>>>>>> 5b8dd71 (mundando para o node.js)
     if (await isLeadContactRateLimited(lead.whatsapp)) {
       sendJson(req, res, 429, {
         message: "Muitas tentativas em sequencia. Aguarde um instante e tente novamente.",
@@ -295,8 +325,11 @@ module.exports = async (req, res) => {
       return;
     }
 
+<<<<<<< HEAD
     await validateTurnstileToken(getTurnstileToken(body), clientIp);
 
+=======
+>>>>>>> 5b8dd71 (mundando para o node.js)
     await saveLeadToSupabase({
       ...lead,
       consent_at: new Date().toISOString(),
@@ -309,6 +342,10 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     if (error instanceof HttpError) {
+      if (error.statusCode >= 500) {
+        logApiError(error);
+      }
+
       sendJson(req, res, error.statusCode, {
         message: error.statusCode >= 500 ? GENERIC_ERROR_MESSAGE : error.message,
       });

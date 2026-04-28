@@ -1,8 +1,6 @@
-const http = require("http");
-const fs = require("fs");
-const path = require("path");
-const leadHandler = require("./api/leads");
+"use strict";
 
+<<<<<<< HEAD
 const root = path.resolve(__dirname);
 const rootBoundary = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
 const port = 4173;
@@ -143,3 +141,6 @@ http
   .listen(port, "127.0.0.1", () => {
     console.log(`Local server running at http://127.0.0.1:${port}`);
   });
+=======
+require("./server").startServer();
+>>>>>>> 5b8dd71 (mundando para o node.js)

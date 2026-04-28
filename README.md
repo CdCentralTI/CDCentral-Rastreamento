@@ -4,7 +4,7 @@ Site institucional da CDCentral Rastreamento com landing page, formulário de ca
 
 ## Visão geral
 
-O projeto é um site estático em HTML, CSS e JavaScript, com um endpoint simples para receber leads em `/api/leads`.
+O projeto é uma aplicação Node.js de produção que serve HTML, CSS e JavaScript puros, além das rotas de API para leads em `/api/leads`.
 
 O site foi pensado para:
 
@@ -18,10 +18,14 @@ O site foi pensado para:
 - HTML estático
 - CSS puro
 - JavaScript vanilla no frontend
-- Node.js para servidor local
-- função HTTP em `api/leads.js`
+- Node.js para servidor HTTP permanente
+- rotas HTTP em `api/`
 - Supabase como armazenamento dos leads
+<<<<<<< HEAD
 - Upstash Redis ou Vercel KV compatível com Upstash para rate limit distribuído
+=======
+- Upstash Redis para rate limit distribuído
+>>>>>>> 5b8dd71 (mundando para o node.js)
 - Cloudflare Turnstile para verificação antiabuso
 
 ## Estrutura do projeto
@@ -33,9 +37,16 @@ O site foi pensado para:
 |-- script.js
 |-- politica-de-privacidade.html
 |-- termos-de-uso.html
+|-- server.js
 |-- serve-local.js
 |-- package.json
 |-- package-lock.json
+<<<<<<< HEAD
+=======
+|-- ecosystem.config.cjs
+|-- DEPLOY-HOSTINGER.md
+|-- DEPLOY-VPS.md
+>>>>>>> 5b8dd71 (mundando para o node.js)
 |-- robots.txt
 |-- sitemap.xml
 |-- vercel.json
@@ -46,6 +57,7 @@ O site foi pensado para:
 |   |-- leads.js
 |   `-- public-config.js
 |-- lib/
+|   |-- app-config.js
 |   |-- http-utils.js
 |   `-- leads-service.js
 |-- supabase/
@@ -68,11 +80,22 @@ O site foi pensado para:
   Controla:
   menu mobile, animação de reveal, ano automático no rodapé, máscara do WhatsApp, validação do formulário e envio para `/api/leads`.
 
+<<<<<<< HEAD
 - [serve-local.js](./serve-local.js)
   Servidor local simples para desenvolvimento. Serve os arquivos estáticos e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report` para os handlers da API.
+=======
+- [server.js](./server.js)
+  Servidor principal de produção. Serve arquivos públicos, aplica headers/cache/logs, expõe `/health` e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report`.
+>>>>>>> 5b8dd71 (mundando para o node.js)
 
-- [vercel.json](./vercel.json)
-  Configuração mínima de produção para headers de segurança, cache de imagens e cache desativado em API.
+- [serve-local.js](./serve-local.js)
+  Alias de compatibilidade que inicia [server.js](./server.js).
+
+- [ecosystem.config.cjs](./ecosystem.config.cjs)
+  Configuração opcional de PM2 para VPS.
+
+- [DEPLOY-HOSTINGER.md](./DEPLOY-HOSTINGER.md) e [DEPLOY-VPS.md](./DEPLOY-VPS.md)
+  Guias de deploy para Hostinger Node.js Web App e VPS.
 
 - [scripts/update-csp-hash.js](./scripts/update-csp-hash.js)
   Atualiza o hash CSP do JSON-LD inline quando o bloco estruturado em [index.html](./index.html) for editado.
@@ -85,6 +108,12 @@ O site foi pensado para:
 
 - [lib/http-utils.js](./lib/http-utils.js)
   Utilitários de parsing JSON, erro HTTP controlado e rate limit distribuído com Redis. Fora de produção, se Redis não estiver configurado, usa fallback em memória.
+<<<<<<< HEAD
+=======
+
+- [lib/app-config.js](./lib/app-config.js)
+  Configuração compartilhada do backend, incluindo a versão vigente de consentimento usada por `/api/public-config` e `/api/leads`.
+>>>>>>> 5b8dd71 (mundando para o node.js)
 
 - [lib/leads-service.js](./lib/leads-service.js)
   Regras de normalização, validação e envio dos dados para o Supabase.
@@ -238,7 +267,17 @@ Use [`.env.example`](./.env.example) como base.
 Exemplo:
 
 ```env
+NODE_ENV=production
+PORT=3000
+HOST=0.0.0.0
+TRUST_PROXY_HEADERS=1
+ALLOW_LOCAL_ORIGINS=0
+REQUIRE_REQUEST_ORIGIN=1
+CONSENT_VERSION=2026-04-28
+SITE_URL=https://seudominio.com.br
+ALLOWED_ORIGINS=https://seudominio.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
+<<<<<<< HEAD
 SUPABASE_LEADS_INSERT_KEY=sb_secret_insert_key_replace_me
 SUPABASE_LEADS_TABLE=leads
 SITE_URL=https://cdcentralrastreamento.com.br
@@ -249,6 +288,15 @@ TURNSTILE_SITE_KEY=0x4AAAA_public_site_key
 TURNSTILE_SECRET_KEY=0x4AAAA_private_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+=======
+SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
+SUPABASE_LEADS_TABLE=leads
+TURNSTILE_SITE_KEY=your_public_turnstile_site_key
+TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
+>>>>>>> 5b8dd71 (mundando para o node.js)
 ```
 
 ### Descrição das variáveis
@@ -258,6 +306,10 @@ UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 
 - `SUPABASE_LEADS_INSERT_KEY`
   Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para inserção. Não use chave publishable/anon aqui e não exponha essa variável no frontend.
+<<<<<<< HEAD
+=======
+  Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API.
+>>>>>>> 5b8dd71 (mundando para o node.js)
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -268,9 +320,27 @@ UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 - `ALLOWED_ORIGINS`
   Lista de origens extras liberadas no CORS, separadas por vírgula.
 
-- `ALLOW_MISSING_ORIGIN`
-  Mantem bloqueadas, por padrao, requisicoes de producao sem header `Origin`. Use `1` somente para integracoes server-to-server controladas.
+- `NODE_ENV`
+  Use `production` em Hostinger/VPS e `development` localmente.
 
+<<<<<<< HEAD
+=======
+- `PORT`
+  Porta usada pelo servidor. O app escuta em `0.0.0.0`.
+
+- `HOST`
+  Interface usada pelo servidor. Use `0.0.0.0` na Hostinger Node.js Web App e `127.0.0.1` em VPS atrás de Nginx.
+
+- `TRUST_PROXY_HEADERS`
+  Use `1` quando estiver atrás de proxy da Hostinger ou Nginx para registrar o IP real via `X-Forwarded-For`.
+
+- `ALLOW_LOCAL_ORIGINS`
+  Use `1` apenas quando precisar liberar origens locais fora do modo desenvolvimento.
+
+- `REQUIRE_REQUEST_ORIGIN`
+  Use `1` em produção para exigir `Origin` válido em `POST /api/leads`.
+
+>>>>>>> 5b8dd71 (mundando para o node.js)
 - `TURNSTILE_SITE_KEY`
   Chave pública do widget Cloudflare Turnstile. Ela é entregue ao navegador por `/api/public-config`.
 
@@ -279,54 +349,92 @@ UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 
 - `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
   Credenciais REST do Upstash Redis para rate limit distribuído.
+<<<<<<< HEAD
 
 - `KV_REST_API_URL` e `KV_REST_API_TOKEN`
   Alternativa compatível quando o Redis/KV da Vercel fornecer credenciais REST.
+=======
+  Em produção, são obrigatórias para `/api/leads`; sem Redis, o endpoint falha fechado.
+
+- `CONSENT_VERSION`
+  Versão vigente do consentimento LGPD entregue por `/api/public-config` e validada por `/api/leads`.
+
+- `ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION`
+  Mantenha `0`. Use `1` somente se aceitar fallback em memória em um único processo Node, sem rate limit distribuído.
+>>>>>>> 5b8dd71 (mundando para o node.js)
 
 ## Como rodar localmente
 
 Pré-requisito recomendado:
 
-- Node.js 18 ou superior
+- Node.js 20 ou superior
 
 ### Passos
 
 1. Crie um `.env.local` com base no `.env.example`.
 2. Preencha as credenciais do Supabase, Turnstile e, se quiser testar Redis localmente, Upstash/KV.
 3. Instale as dependências:
+<<<<<<< HEAD
 
 ```powershell
 npm install
 ```
 
 4. Inicie o servidor local:
+=======
+>>>>>>> 5b8dd71 (mundando para o node.js)
 
 ```powershell
-node serve-local.js
+npm install
 ```
 
+<<<<<<< HEAD
+=======
+4. Inicie o servidor local:
+
+```powershell
+npm run dev
+```
+
+>>>>>>> 5b8dd71 (mundando para o node.js)
 5. Acesse:
 
 ```text
-http://127.0.0.1:4173
+http://127.0.0.1:3000
+```
+
+Health check local:
+
+```powershell
+curl.exe -i http://127.0.0.1:3000/health
 ```
 
 ## Publicação
 
-O projeto pode ser publicado como site estático com suporte à rota `/api/leads`.
+O projeto deve ser publicado como aplicação Node.js permanente. Para Hostinger Node.js Web App, use [DEPLOY-HOSTINGER.md](./DEPLOY-HOSTINGER.md). Para VPS com PM2 e Nginx, use [DEPLOY-VPS.md](./DEPLOY-VPS.md).
 
 Pontos importantes na publicação:
 
 - configurar corretamente as variáveis de ambiente;
-- se editar o JSON-LD em [index.html](./index.html), rodar `node scripts/update-csp-hash.js` antes do deploy;
+- se editar o JSON-LD em [index.html](./index.html), rodar `node scripts/update-csp-hash.js` antes de deploy Vercel; no deploy Node.js, [server.js](./server.js) calcula o hash no startup;
 - garantir que o domínio final esteja em `SITE_URL`;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
 - configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`;
+<<<<<<< HEAD
 - configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` ou as variáveis `KV_REST_API_URL` e `KV_REST_API_TOKEN`;
 - aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
 
+=======
+- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`;
+- aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
+
+### Estratégia Supabase/RLS
+
+O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY` no backend.
+
+>>>>>>> 5b8dd71 (mundando para o node.js)
 ## Testes manuais de segurança
 
 Antes de publicar, confirme:
@@ -379,6 +487,6 @@ O fundo é composto por:
 ## Observações
 
 - O projeto não usa framework frontend.
-- O servidor local é propositalmente simples.
-- O backend depende de `fetch` disponível no runtime, por isso Node 18+ é o mais indicado.
+- O servidor principal é [server.js](./server.js); [serve-local.js](./serve-local.js) existe apenas por compatibilidade.
+- O backend depende de `fetch` disponível no runtime, por isso Node 20+ é o alvo recomendado.
 - A documentação deve ser atualizada sempre que houver mudança de campos, links, estrutura ou fluxo de deploy.

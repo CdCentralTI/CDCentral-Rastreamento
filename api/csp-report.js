@@ -1,8 +1,86 @@
 "use strict";
 
+<<<<<<< HEAD
 const MAX_REPORT_BYTES = 8 * 1024;
 
 const readBody = async (req) => {
+=======
+const { isIP } = require("net");
+const { createRateLimiter, isJsonContentType } = require("../lib/http-utils");
+
+const MAX_REPORT_BYTES = 8 * 1024;
+const CSP_REPORT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const CSP_REPORT_RATE_LIMIT_MAX_REQUESTS = 20;
+const TRUST_PROXY_HEADERS = process.env.VERCEL === "1" || process.env.TRUST_PROXY_HEADERS === "1";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+const isCspReportRateLimited = createRateLimiter({
+  windowMs: CSP_REPORT_RATE_LIMIT_WINDOW_MS,
+  maxRequests: CSP_REPORT_RATE_LIMIT_MAX_REQUESTS,
+  keyPrefix: "rl:csp:",
+  maxKeys: 1000,
+  requireExternalInProduction: false,
+});
+
+const normalizeIpCandidate = (value) => {
+  let candidate = String(value || "").trim().replace(/^"|"$/g, "");
+  if (!candidate) {
+    return "";
+  }
+
+  if (candidate.startsWith("[") && candidate.includes("]")) {
+    candidate = candidate.slice(1, candidate.indexOf("]"));
+  } else {
+    const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
+    if (ipv4WithPort) {
+      candidate = ipv4WithPort[1];
+    }
+  }
+
+  candidate = candidate.replace(/^::ffff:/i, "");
+  return isIP(candidate) ? candidate : "";
+};
+
+const getForwardedForIp = (headerValue) => {
+  return (
+    String(headerValue || "")
+      .split(",")
+      .map(normalizeIpCandidate)
+      .find(Boolean) || ""
+  );
+};
+
+const getClientIp = (req) => {
+  const socketIp = normalizeIpCandidate(req.socket?.remoteAddress);
+
+  if (TRUST_PROXY_HEADERS) {
+    return (
+      getForwardedForIp(req.headers["x-forwarded-for"]) ||
+      normalizeIpCandidate(req.headers["x-real-ip"]) ||
+      socketIp ||
+      "unknown"
+    );
+  }
+
+  return socketIp || "unknown";
+};
+
+const isCspReportContentType = (value) => {
+  const mediaType = String(value || "")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+
+  return mediaType === "application/csp-report" || isJsonContentType(value);
+};
+
+const readBody = async (req) => {
+  const declaredLength = Number(req.headers["content-length"] || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REPORT_BYTES) {
+    return "";
+  }
+
+>>>>>>> 5b8dd71 (mundando para o node.js)
   if (Buffer.isBuffer(req.body)) {
     return req.body.slice(0, MAX_REPORT_BYTES).toString("utf8");
   }
@@ -94,10 +172,43 @@ module.exports = async (req, res) => {
     return;
   }
 
+<<<<<<< HEAD
   const reports = parseReports(await readBody(req)).filter((report) => report.effectiveDirective || report.blockedUri);
 
   if (reports.length > 0) {
     console.warn("CSP report:", reports);
+=======
+  if (!isCspReportContentType(req.headers["content-type"])) {
+    sendNoContent(res);
+    return;
+  }
+
+  try {
+    if (await isCspReportRateLimited(getClientIp(req))) {
+      sendNoContent(res);
+      return;
+    }
+
+    const reports = parseReports(await readBody(req)).filter((report) => report.effectiveDirective || report.blockedUri);
+
+    if (reports.length > 0) {
+      if (IS_PRODUCTION) {
+        console.warn("CSP report received:", {
+          count: reports.length,
+          directives: [...new Set(reports.map((report) => report.effectiveDirective).filter(Boolean))].slice(0, 5),
+        });
+      } else {
+        console.warn("CSP report:", reports);
+      }
+    }
+  } catch (error) {
+    if (!IS_PRODUCTION) {
+      console.warn("CSP report ignored:", {
+        name: error?.name || "Error",
+        code: error?.code || "unexpected_error",
+      });
+    }
+>>>>>>> 5b8dd71 (mundando para o node.js)
   }
 
   sendNoContent(res);

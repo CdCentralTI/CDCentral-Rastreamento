@@ -22,6 +22,32 @@
       ]
     },
     {
+      "source": "/styles.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/script.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
       "source": "/CD CENTRAL IMG/(.*)",
       "headers": [
         {
@@ -105,7 +131,11 @@
         },
         {
           "key": "Content-Security-Policy-Report-Only",
+<<<<<<< HEAD
           "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://challenges.cloudflare.com 'sha256-XDNhMYnLbAyE7PfAOMgplDEeaysPTFYET9wE1b3ZAww='; script-src-attr 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; media-src 'none'; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests; report-uri /api/csp-report; report-to default"
+=======
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://challenges.cloudflare.com 'sha256-XDNhMYnLbAyE7PfAOMgplDEeaysPTFYET9wE1b3ZAww='; script-src-attr 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com; media-src 'none'; worker-src 'none'; manifest-src 'self'; report-uri /api/csp-report; report-to default"
+>>>>>>> 5b8dd71 (mundando para o node.js)
         }
       ]
     }

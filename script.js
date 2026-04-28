@@ -9,6 +9,10 @@ const submitButton = document.querySelector("#lead-submit");
 const feedbackNode = document.querySelector("#form-feedback");
 const whatsappInput = document.querySelector("#whatsapp");
 const startedAtInput = document.querySelector("#started_at");
+<<<<<<< HEAD
+=======
+const consentVersionInput = document.querySelector("#consent_version");
+>>>>>>> 5b8dd71 (mundando para o node.js)
 const turnstileNode = document.querySelector("#turnstile-widget");
 const keepHeaderScrolled = document.body.classList.contains("legal-page");
 
@@ -18,6 +22,10 @@ const SUBMIT_IDLE_TEXT = "Receber orçamento";
 const SUBMIT_LOADING_TEXT = "Enviando...";
 const CONSENT_VERSION = "2026-04-28";
 const GENERIC_SUBMIT_ERROR = "Não foi possível enviar agora. Tente novamente em instantes.";
+<<<<<<< HEAD
+=======
+let activeConsentVersion = String(consentVersionInput?.value || "").trim();
+>>>>>>> 5b8dd71 (mundando para o node.js)
 let turnstileWidgetId = null;
 let turnstileReady = false;
 
@@ -57,6 +65,7 @@ const closeMenu = () => {
   }
   nav.classList.remove("is-open");
   menuToggle.setAttribute("aria-expanded", "false");
+  menuToggle.setAttribute("aria-label", "Abrir menu");
 };
 
 const formatWhatsapp = (value) => {
@@ -94,7 +103,11 @@ const getLeadPayload = (formData) => ({
   empresa: String(formData.get("empresa") || "").trim(),
   startedAt: String(formData.get("started_at") || "").trim(),
   consent: formData.get("consent") === "true",
+<<<<<<< HEAD
   consentVersion: String(formData.get("consentVersion") || CONSENT_VERSION).trim(),
+=======
+  consentVersion: activeConsentVersion || String(formData.get("consentVersion") || "").trim(),
+>>>>>>> 5b8dd71 (mundando para o node.js)
   "cf-turnstile-response": getTurnstileToken(formData),
 });
 
@@ -241,6 +254,14 @@ const loadPublicConfig = async () => {
     throw new Error(GENERIC_SUBMIT_ERROR);
   }
 
+<<<<<<< HEAD
+=======
+  activeConsentVersion = String(config.consentVersion || activeConsentVersion || "").trim();
+  if (consentVersionInput && activeConsentVersion) {
+    consentVersionInput.value = activeConsentVersion;
+  }
+
+>>>>>>> 5b8dd71 (mundando para o node.js)
   return config;
 };
 
@@ -374,6 +395,7 @@ if (menuToggle && nav) {
   menuToggle.addEventListener("click", () => {
     const isOpen = nav.classList.toggle("is-open");
     menuToggle.setAttribute("aria-expanded", String(isOpen));
+    menuToggle.setAttribute("aria-label", isOpen ? "Fechar menu" : "Abrir menu");
   });
 
   nav.querySelectorAll("a").forEach((anchor) => {
@@ -383,6 +405,13 @@ if (menuToggle && nav) {
   window.addEventListener("resize", () => {
     if (window.innerWidth >= DESKTOP_NAV_BREAKPOINT) {
       closeMenu();
+    }
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && nav.classList.contains("is-open")) {
+      closeMenu();
+      menuToggle.focus();
     }
   });
 }

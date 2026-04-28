@@ -37,3 +37,4 @@ cspHeaders.forEach((cspHeader) => {
 
 fs.writeFileSync(vercelPath, `${JSON.stringify(vercelConfig, null, 2)}\n`);
 console.log(`Updated Content-Security-Policy JSON-LD hash: ${hashDirective}`);
+console.log("server.js computes the same JSON-LD hash at startup for Hostinger/VPS deployments.");

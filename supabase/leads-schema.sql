@@ -1,3 +1,11 @@
+-- Estrategia aplicada:
+-- - O formulario nunca escreve diretamente no Supabase pelo navegador.
+-- - Inserts entram pela API Node.js em /api/leads.
+-- - SUPABASE_LEADS_INSERT_KEY deve ser uma chave server-side, preferencialmente
+--   service_role/secret key, armazenada apenas em variavel de ambiente do backend.
+-- - anon/authenticated ficam sem permissoes nesta tabela para evitar bypass de
+--   Turnstile, rate limit e validacoes da API.
+
 create table if not exists public.leads (
   id bigint generated always as identity primary key,
   nome text not null,
@@ -102,6 +110,11 @@ end $$;
 
 drop policy if exists leads_insert_only on public.leads;
 
+comment on table public.leads is
+  'Leads inseridos somente pela API Node.js server-side. RLS fica ativo e anon/authenticated nao possuem policy de insert.';
+
 -- Mantem a tabela fechada para chaves publicas do navegador.
--- A insercao deve acontecer somente pela API server-side usando uma chave restrita
--- configurada em SUPABASE_LEADS_INSERT_KEY.
+-- A insercao deve acontecer somente pela API server-side usando SUPABASE_LEADS_INSERT_KEY.
+-- Se voce decidir usar anon/publishable key, NAO exponha a tabela diretamente sem
+-- outra protecao server-side: crie uma funcao/edge function segura ou uma policy
+-- extremamente restrita e aceite que ela podera ser chamada fora do site.
