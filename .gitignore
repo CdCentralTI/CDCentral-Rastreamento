@@ -1,20 +1,12 @@
 chrome-profile/
 exports/
 node_modules/
-<<<<<<< HEAD
-server-out.log
-server-err.log
-.env
-.env.local
-.env.*.local
-=======
 *.log
 *.tmp
 tmp/
 logs/
 .env*
 !.env.example
->>>>>>> 5b8dd71 (mundando para o node.js)
 .vercel/
 .claude/
 *.key

@@ -12,18 +12,14 @@ const CONTACT_RATE_LIMIT_MAX_REQUESTS = 3;
 const MIN_FORM_FILL_TIME_MS = 1500;
 const MAX_FORM_AGE_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 16 * 1024;
-<<<<<<< HEAD
-const CONSENT_VERSION = "2026-04-28";
-=======
 const CONSENT_VERSION = getConsentVersion();
->>>>>>> 5b8dd71 (mundando para o node.js)
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const TURNSTILE_TIMEOUT_MS = 5000;
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.";
 const TRUST_PROXY_HEADERS = process.env.VERCEL === "1" || process.env.TRUST_PROXY_HEADERS === "1";
 const IS_DEPLOYED_RUNTIME = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 const REQUIRE_REQUEST_ORIGIN =
-  process.env.REQUIRE_REQUEST_ORIGIN === "1" || (process.env.ALLOW_MISSING_ORIGIN !== "1" && IS_DEPLOYED_RUNTIME);
+  process.env.REQUIRE_REQUEST_ORIGIN === "1" || (process.env.REQUIRE_REQUEST_ORIGIN !== "0" && IS_DEPLOYED_RUNTIME);
 const ALLOW_LOCAL_ORIGINS = process.env.ALLOW_LOCAL_ORIGINS === "1" || !IS_DEPLOYED_RUNTIME;
 const LOCAL_ALLOWED_ORIGINS = [
   "http://127.0.0.1:3000",
@@ -313,11 +309,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-<<<<<<< HEAD
-=======
     await validateTurnstileToken(getTurnstileToken(body), clientIp);
 
->>>>>>> 5b8dd71 (mundando para o node.js)
     if (await isLeadContactRateLimited(lead.whatsapp)) {
       sendJson(req, res, 429, {
         message: "Muitas tentativas em sequencia. Aguarde um instante e tente novamente.",
@@ -325,11 +318,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-<<<<<<< HEAD
-    await validateTurnstileToken(getTurnstileToken(body), clientIp);
-
-=======
->>>>>>> 5b8dd71 (mundando para o node.js)
     await saveLeadToSupabase({
       ...lead,
       consent_at: new Date().toISOString(),

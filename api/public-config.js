@@ -1,10 +1,7 @@
 "use strict";
 
-<<<<<<< HEAD
-=======
 const { getConsentVersion } = require("../lib/app-config");
 
->>>>>>> 5b8dd71 (mundando para o node.js)
 const sendJson = (res, statusCode, payload) => {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -34,10 +31,7 @@ module.exports = async (req, res) => {
   }
 
   sendJson(res, 200, {
-<<<<<<< HEAD
-=======
     consentVersion: getConsentVersion(),
->>>>>>> 5b8dd71 (mundando para o node.js)
     turnstileSiteKey,
   });
 };

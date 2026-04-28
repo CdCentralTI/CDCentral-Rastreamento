@@ -2,10 +2,6 @@
   "name": "cdcentral-rastreamento",
   "version": "1.0.0",
   "private": true,
-<<<<<<< HEAD
-  "description": "Landing estatica da CDCentral Rastreamento com API serverless para leads.",
-  "license": "UNLICENSED",
-=======
   "description": "Aplicacao Node.js da CDCentral Rastreamento com site estatico e API de leads.",
   "license": "UNLICENSED",
   "scripts": {
@@ -15,7 +11,6 @@
   "engines": {
     "node": ">=20"
   },
->>>>>>> 5b8dd71 (mundando para o node.js)
   "dependencies": {
     "@upstash/redis": "1.37.0"
   }

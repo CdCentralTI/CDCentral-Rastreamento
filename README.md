@@ -21,11 +21,7 @@ O site foi pensado para:
 - Node.js para servidor HTTP permanente
 - rotas HTTP em `api/`
 - Supabase como armazenamento dos leads
-<<<<<<< HEAD
-- Upstash Redis ou Vercel KV compatível com Upstash para rate limit distribuído
-=======
 - Upstash Redis para rate limit distribuído
->>>>>>> 5b8dd71 (mundando para o node.js)
 - Cloudflare Turnstile para verificação antiabuso
 
 ## Estrutura do projeto
@@ -41,12 +37,9 @@ O site foi pensado para:
 |-- serve-local.js
 |-- package.json
 |-- package-lock.json
-<<<<<<< HEAD
-=======
 |-- ecosystem.config.cjs
 |-- DEPLOY-HOSTINGER.md
 |-- DEPLOY-VPS.md
->>>>>>> 5b8dd71 (mundando para o node.js)
 |-- robots.txt
 |-- sitemap.xml
 |-- vercel.json
@@ -80,13 +73,8 @@ O site foi pensado para:
   Controla:
   menu mobile, animação de reveal, ano automático no rodapé, máscara do WhatsApp, validação do formulário e envio para `/api/leads`.
 
-<<<<<<< HEAD
-- [serve-local.js](./serve-local.js)
-  Servidor local simples para desenvolvimento. Serve os arquivos estáticos e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report` para os handlers da API.
-=======
 - [server.js](./server.js)
   Servidor principal de produção. Serve arquivos públicos, aplica headers/cache/logs, expõe `/health` e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report`.
->>>>>>> 5b8dd71 (mundando para o node.js)
 
 - [serve-local.js](./serve-local.js)
   Alias de compatibilidade que inicia [server.js](./server.js).
@@ -108,12 +96,9 @@ O site foi pensado para:
 
 - [lib/http-utils.js](./lib/http-utils.js)
   Utilitários de parsing JSON, erro HTTP controlado e rate limit distribuído com Redis. Fora de produção, se Redis não estiver configurado, usa fallback em memória.
-<<<<<<< HEAD
-=======
 
 - [lib/app-config.js](./lib/app-config.js)
   Configuração compartilhada do backend, incluindo a versão vigente de consentimento usada por `/api/public-config` e `/api/leads`.
->>>>>>> 5b8dd71 (mundando para o node.js)
 
 - [lib/leads-service.js](./lib/leads-service.js)
   Regras de normalização, validação e envio dos dados para o Supabase.
@@ -277,18 +262,6 @@ CONSENT_VERSION=2026-04-28
 SITE_URL=https://seudominio.com.br
 ALLOWED_ORIGINS=https://seudominio.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
-<<<<<<< HEAD
-SUPABASE_LEADS_INSERT_KEY=sb_secret_insert_key_replace_me
-SUPABASE_LEADS_TABLE=leads
-SITE_URL=https://cdcentralrastreamento.com.br
-ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br,https://your-preview.vercel.app
-# Use 1 apenas se houver uma integracao server-to-server controlada sem Origin.
-# ALLOW_MISSING_ORIGIN=0
-TURNSTILE_SITE_KEY=0x4AAAA_public_site_key
-TURNSTILE_SECRET_KEY=0x4AAAA_private_secret_key
-UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
-=======
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
 TURNSTILE_SITE_KEY=your_public_turnstile_site_key
@@ -296,7 +269,6 @@ TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
->>>>>>> 5b8dd71 (mundando para o node.js)
 ```
 
 ### Descrição das variáveis
@@ -306,10 +278,7 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `SUPABASE_LEADS_INSERT_KEY`
   Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para inserção. Não use chave publishable/anon aqui e não exponha essa variável no frontend.
-<<<<<<< HEAD
-=======
   Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API.
->>>>>>> 5b8dd71 (mundando para o node.js)
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -323,8 +292,6 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 - `NODE_ENV`
   Use `production` em Hostinger/VPS e `development` localmente.
 
-<<<<<<< HEAD
-=======
 - `PORT`
   Porta usada pelo servidor. O app escuta em `0.0.0.0`.
 
@@ -340,7 +307,6 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 - `REQUIRE_REQUEST_ORIGIN`
   Use `1` em produção para exigir `Origin` válido em `POST /api/leads`.
 
->>>>>>> 5b8dd71 (mundando para o node.js)
 - `TURNSTILE_SITE_KEY`
   Chave pública do widget Cloudflare Turnstile. Ela é entregue ao navegador por `/api/public-config`.
 
@@ -349,11 +315,6 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
   Credenciais REST do Upstash Redis para rate limit distribuído.
-<<<<<<< HEAD
-
-- `KV_REST_API_URL` e `KV_REST_API_TOKEN`
-  Alternativa compatível quando o Redis/KV da Vercel fornecer credenciais REST.
-=======
   Em produção, são obrigatórias para `/api/leads`; sem Redis, o endpoint falha fechado.
 
 - `CONSENT_VERSION`
@@ -361,7 +322,6 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION`
   Mantenha `0`. Use `1` somente se aceitar fallback em memória em um único processo Node, sem rate limit distribuído.
->>>>>>> 5b8dd71 (mundando para o node.js)
 
 ## Como rodar localmente
 
@@ -374,29 +334,17 @@ Pré-requisito recomendado:
 1. Crie um `.env.local` com base no `.env.example`.
 2. Preencha as credenciais do Supabase, Turnstile e, se quiser testar Redis localmente, Upstash/KV.
 3. Instale as dependências:
-<<<<<<< HEAD
 
 ```powershell
 npm install
 ```
 
-4. Inicie o servidor local:
-=======
->>>>>>> 5b8dd71 (mundando para o node.js)
-
-```powershell
-npm install
-```
-
-<<<<<<< HEAD
-=======
 4. Inicie o servidor local:
 
 ```powershell
 npm run dev
 ```
 
->>>>>>> 5b8dd71 (mundando para o node.js)
 5. Acesse:
 
 ```text
@@ -422,11 +370,6 @@ Pontos importantes na publicação:
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
 - configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`;
-<<<<<<< HEAD
-- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` ou as variáveis `KV_REST_API_URL` e `KV_REST_API_TOKEN`;
-- aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
-
-=======
 - configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`;
 - aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
 
@@ -434,7 +377,6 @@ Pontos importantes na publicação:
 
 O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY` no backend.
 
->>>>>>> 5b8dd71 (mundando para o node.js)
 ## Testes manuais de segurança
 
 Antes de publicar, confirme:

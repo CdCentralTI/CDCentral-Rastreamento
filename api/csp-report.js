@@ -1,10 +1,5 @@
 "use strict";
 
-<<<<<<< HEAD
-const MAX_REPORT_BYTES = 8 * 1024;
-
-const readBody = async (req) => {
-=======
 const { isIP } = require("net");
 const { createRateLimiter, isJsonContentType } = require("../lib/http-utils");
 
@@ -80,7 +75,6 @@ const readBody = async (req) => {
     return "";
   }
 
->>>>>>> 5b8dd71 (mundando para o node.js)
   if (Buffer.isBuffer(req.body)) {
     return req.body.slice(0, MAX_REPORT_BYTES).toString("utf8");
   }
@@ -172,12 +166,6 @@ module.exports = async (req, res) => {
     return;
   }
 
-<<<<<<< HEAD
-  const reports = parseReports(await readBody(req)).filter((report) => report.effectiveDirective || report.blockedUri);
-
-  if (reports.length > 0) {
-    console.warn("CSP report:", reports);
-=======
   if (!isCspReportContentType(req.headers["content-type"])) {
     sendNoContent(res);
     return;
@@ -208,7 +196,6 @@ module.exports = async (req, res) => {
         code: error?.code || "unexpected_error",
       });
     }
->>>>>>> 5b8dd71 (mundando para o node.js)
   }
 
   sendNoContent(res);

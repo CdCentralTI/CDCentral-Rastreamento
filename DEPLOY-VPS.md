@@ -76,6 +76,8 @@ UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 ```
 
+`CONSENT_VERSION` representa a fonte operacional da versao de consentimento enviada por `/api/public-config` e validada em `/api/leads`. Ao atualizar a Politica de Privacidade, altere essa variavel no `.env` da VPS e reinicie o PM2.
+
 Proteja o arquivo:
 
 ```bash

@@ -9,10 +9,7 @@ const submitButton = document.querySelector("#lead-submit");
 const feedbackNode = document.querySelector("#form-feedback");
 const whatsappInput = document.querySelector("#whatsapp");
 const startedAtInput = document.querySelector("#started_at");
-<<<<<<< HEAD
-=======
 const consentVersionInput = document.querySelector("#consent_version");
->>>>>>> 5b8dd71 (mundando para o node.js)
 const turnstileNode = document.querySelector("#turnstile-widget");
 const keepHeaderScrolled = document.body.classList.contains("legal-page");
 
@@ -20,12 +17,8 @@ const DESKTOP_NAV_BREAKPOINT = 980;
 const SUBMIT_TIMEOUT_MS = 10000;
 const SUBMIT_IDLE_TEXT = "Receber orçamento";
 const SUBMIT_LOADING_TEXT = "Enviando...";
-const CONSENT_VERSION = "2026-04-28";
 const GENERIC_SUBMIT_ERROR = "Não foi possível enviar agora. Tente novamente em instantes.";
-<<<<<<< HEAD
-=======
 let activeConsentVersion = String(consentVersionInput?.value || "").trim();
->>>>>>> 5b8dd71 (mundando para o node.js)
 let turnstileWidgetId = null;
 let turnstileReady = false;
 
@@ -103,11 +96,7 @@ const getLeadPayload = (formData) => ({
   empresa: String(formData.get("empresa") || "").trim(),
   startedAt: String(formData.get("started_at") || "").trim(),
   consent: formData.get("consent") === "true",
-<<<<<<< HEAD
-  consentVersion: String(formData.get("consentVersion") || CONSENT_VERSION).trim(),
-=======
   consentVersion: activeConsentVersion || String(formData.get("consentVersion") || "").trim(),
->>>>>>> 5b8dd71 (mundando para o node.js)
   "cf-turnstile-response": getTurnstileToken(formData),
 });
 
@@ -254,14 +243,11 @@ const loadPublicConfig = async () => {
     throw new Error(GENERIC_SUBMIT_ERROR);
   }
 
-<<<<<<< HEAD
-=======
   activeConsentVersion = String(config.consentVersion || activeConsentVersion || "").trim();
   if (consentVersionInput && activeConsentVersion) {
     consentVersionInput.value = activeConsentVersion;
   }
 
->>>>>>> 5b8dd71 (mundando para o node.js)
   return config;
 };
 
