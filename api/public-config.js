@@ -23,15 +23,9 @@ module.exports = async (req, res) => {
 
   const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY || "";
 
-  if (!turnstileSiteKey) {
-    sendJson(res, 500, {
-      message: "Configuracao publica indisponivel.",
-    });
-    return;
-  }
-
   sendJson(res, 200, {
     consentVersion: getConsentVersion(),
+    turnstileEnabled: Boolean(turnstileSiteKey),
     turnstileSiteKey,
   });
 };

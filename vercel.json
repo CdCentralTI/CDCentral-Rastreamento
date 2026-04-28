@@ -78,9 +78,7 @@
       "has": [
         {
           "type": "host",
-          "value": {
-            "neq": "cdcentralrastreamento.com.br"
-          }
+          "value": "^(?!cdcentralrastreamento\\.com\\.br$).+$"
         }
       ],
       "headers": [

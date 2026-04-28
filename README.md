@@ -21,8 +21,8 @@ O site foi pensado para:
 - Node.js para servidor HTTP permanente
 - rotas HTTP em `api/`
 - Supabase como armazenamento dos leads
-- Upstash Redis para rate limit distribuído
-- Cloudflare Turnstile para verificação antiabuso
+- Upstash Redis recomendado para rate limit distribuído
+- Cloudflare Turnstile recomendado para verificação antiabuso
 
 ## Estrutura do projeto
 
@@ -95,7 +95,7 @@ O site foi pensado para:
   Endpoint responsável por validar requisições, aplicar CORS, limitar tentativas e persistir o lead.
 
 - [lib/http-utils.js](./lib/http-utils.js)
-  Utilitários de parsing JSON, erro HTTP controlado e rate limit distribuído com Redis. Fora de produção, se Redis não estiver configurado, usa fallback em memória.
+  Utilitários de parsing JSON, erro HTTP controlado e rate limit com Redis/KV quando configurado. Sem Redis, usa fallback em memória; defina `REQUIRE_EXTERNAL_RATE_LIMIT=1` para falhar fechado em produção.
 
 - [lib/app-config.js](./lib/app-config.js)
   Configuração compartilhada do backend, incluindo a versão vigente de consentimento usada por `/api/public-config` e `/api/leads`.
@@ -191,7 +191,7 @@ O backend também reconhece campos auxiliares de proteção quando presentes:
 - `empresa`
 - `startedAt`
 
-No fluxo do site, `startedAt` é enviado pelo formulário e usado como sinal anti-spam. O token `cf-turnstile-response` é gerado pelo Cloudflare Turnstile e validado no backend antes de gravar o lead.
+No fluxo do site, `startedAt` é enviado pelo formulário e usado como sinal anti-spam. Quando o Cloudflare Turnstile está configurado, o token `cf-turnstile-response` é gerado no navegador e validado no backend antes de gravar o lead.
 
 ### Regras de validação
 
@@ -202,7 +202,7 @@ No frontend e backend, o lead precisa ter:
 - tipo preenchido;
 - quantidade de veículos maior ou igual a 1;
 - consentimento LGPD marcado com a versão vigente;
-- token Turnstile válido.
+- token Turnstile válido quando a proteção estiver configurada/obrigatória.
 
 ### Proteções existentes
 
@@ -211,10 +211,10 @@ O endpoint possui proteções simples contra abuso:
 - validação de origem por CORS;
 - bloqueio de requisições cross-site sinalizadas por `Sec-Fetch-Site`;
 - exigência de `Origin` válido em produção;
-- rate limit distribuído por IP com chave `rl:ip:<ip>` de 5 requisições a cada 10 minutos;
-- rate limit distribuído por WhatsApp com chave `rl:wpp:<digits>` de 3 requisições a cada 24 horas;
-- fallback em memória apenas fora de produção quando Redis/KV não estiver configurado;
-- validação server-side do Cloudflare Turnstile;
+- rate limit por IP com chave `rl:ip:<ip>` de 5 requisições a cada 10 minutos;
+- rate limit por WhatsApp com chave `rl:wpp:<digits>` de 3 requisições a cada 24 horas;
+- Redis/KV recomendado para rate limit distribuído; fallback em memória mantém o formulário ativo quando Redis ainda não foi configurado;
+- validação server-side do Cloudflare Turnstile quando as chaves estão configuradas ou `REQUIRE_TURNSTILE=1`;
 - consentimento LGPD obrigatório e persistido com data, versão e IP;
 - campo honeypot `empresa`;
 - verificação de tempo mínimo de preenchimento via `startedAt`.
@@ -264,10 +264,12 @@ ALLOWED_ORIGINS=https://seudominio.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
+REQUIRE_TURNSTILE=1
 TURNSTILE_SITE_KEY=your_public_turnstile_site_key
 TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+REQUIRE_EXTERNAL_RATE_LIMIT=1
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 ```
 
@@ -278,7 +280,7 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `SUPABASE_LEADS_INSERT_KEY`
   Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para inserção. Não use chave publishable/anon aqui e não exponha essa variável no frontend.
-  Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API.
+  Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API. Por compatibilidade, `SUPABASE_SERVICE_ROLE_KEY` também é aceita como fallback server-side.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -313,9 +315,15 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 - `TURNSTILE_SECRET_KEY`
   Chave secreta server-side usada para validar `cf-turnstile-response`. Não exponha no frontend.
 
+- `REQUIRE_TURNSTILE`
+  Use `1` para exigir Turnstile em produção. Se as chaves ainda não foram criadas, use `0` temporariamente para manter o formulário ativo sem derrubar `/api/public-config`.
+
 - `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
   Credenciais REST do Upstash Redis para rate limit distribuído.
-  Em produção, são obrigatórias para `/api/leads`; sem Redis, o endpoint falha fechado.
+  Recomendadas em produção para rate limit distribuído.
+
+- `REQUIRE_EXTERNAL_RATE_LIMIT`
+  Use `1` para exigir Redis/KV em produção. Sem essa flag, `/api/leads` usa fallback em memória quando Redis/KV não está configurado.
 
 - `CONSENT_VERSION`
   Versão vigente do consentimento LGPD entregue por `/api/public-config` e validada por `/api/leads`.
@@ -332,7 +340,7 @@ Pré-requisito recomendado:
 ### Passos
 
 1. Crie um `.env.local` com base no `.env.example`.
-2. Preencha as credenciais do Supabase, Turnstile e, se quiser testar Redis localmente, Upstash/KV.
+2. Preencha as credenciais do Supabase. Turnstile e Upstash/KV são recomendados em produção; use `REQUIRE_TURNSTILE=1` e `REQUIRE_EXTERNAL_RATE_LIMIT=1` somente depois de configurar as respectivas chaves.
 3. Instale as dependências:
 
 ```powershell
@@ -369,20 +377,20 @@ Pontos importantes na publicação:
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
-- configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`;
-- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`;
+- configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` antes de usar `REQUIRE_TURNSTILE=1`;
+- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` antes de usar `REQUIRE_EXTERNAL_RATE_LIMIT=1`;
 - aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
 
 ### Estratégia Supabase/RLS
 
-O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY` no backend.
+O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile quando configurado e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY` ou o fallback server-side `SUPABASE_SERVICE_ROLE_KEY` no backend.
 
 ## Testes manuais de segurança
 
 Antes de publicar, confirme:
 
 - `POST /api/leads` sem `Origin` em produção retorna `403`;
-- `POST /api/leads` com `cf-turnstile-response` inválido retorna `400`;
+- `POST /api/leads` com `cf-turnstile-response` inválido retorna `400` quando `REQUIRE_TURNSTILE=1` ou as chaves Turnstile estão configuradas;
 - `POST /api/leads` sem `consent: true` retorna `422`;
 - mais de 5 `POST /api/leads` em 10 minutos para o mesmo IP retorna `429`;
 - o HTML servido não contém chaves Supabase nem segredos;

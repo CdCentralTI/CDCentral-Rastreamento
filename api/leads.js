@@ -18,6 +18,7 @@ const TURNSTILE_TIMEOUT_MS = 5000;
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.";
 const TRUST_PROXY_HEADERS = process.env.VERCEL === "1" || process.env.TRUST_PROXY_HEADERS === "1";
 const IS_DEPLOYED_RUNTIME = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+const REQUIRE_EXTERNAL_RATE_LIMIT = process.env.REQUIRE_EXTERNAL_RATE_LIMIT === "1";
 const REQUIRE_REQUEST_ORIGIN =
   process.env.REQUIRE_REQUEST_ORIGIN === "1" || (process.env.REQUIRE_REQUEST_ORIGIN !== "0" && IS_DEPLOYED_RUNTIME);
 const ALLOW_LOCAL_ORIGINS = process.env.ALLOW_LOCAL_ORIGINS === "1" || !IS_DEPLOYED_RUNTIME;
@@ -32,12 +33,14 @@ const isLeadRateLimited = createRateLimiter({
   windowMs: RATE_LIMIT_WINDOW_MS,
   maxRequests: RATE_LIMIT_MAX_REQUESTS,
   keyPrefix: "rl:ip:",
+  requireExternalInProduction: REQUIRE_EXTERNAL_RATE_LIMIT,
 });
 
 const isLeadContactRateLimited = createRateLimiter({
   windowMs: CONTACT_RATE_LIMIT_WINDOW_MS,
   maxRequests: CONTACT_RATE_LIMIT_MAX_REQUESTS,
   keyPrefix: "rl:wpp:",
+  requireExternalInProduction: REQUIRE_EXTERNAL_RATE_LIMIT,
 });
 
 const normalizeOrigin = (value) => {
@@ -177,6 +180,18 @@ const hasValidConsent = (body) => {
   return body.consent === true && String(body.consentVersion || "").trim() === CONSENT_VERSION;
 };
 
+const isTurnstileRequired = () => {
+  if (process.env.REQUIRE_TURNSTILE === "1") {
+    return true;
+  }
+
+  if (process.env.REQUIRE_TURNSTILE === "0") {
+    return false;
+  }
+
+  return Boolean(process.env.TURNSTILE_SITE_KEY || process.env.TURNSTILE_SECRET_KEY);
+};
+
 const getTurnstileToken = (body) => String(body["cf-turnstile-response"] || "").trim();
 
 const validateTurnstileToken = async (token, remoteIp) => {
@@ -309,7 +324,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    await validateTurnstileToken(getTurnstileToken(body), clientIp);
+    if (isTurnstileRequired()) {
+      await validateTurnstileToken(getTurnstileToken(body), clientIp);
+    }
 
     if (await isLeadContactRateLimited(lead.whatsapp)) {
       sendJson(req, res, 429, {

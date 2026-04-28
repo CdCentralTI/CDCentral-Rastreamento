@@ -21,6 +21,8 @@ const GENERIC_SUBMIT_ERROR = "Não foi possível enviar agora. Tente novamente e
 let activeConsentVersion = String(consentVersionInput?.value || "").trim();
 let turnstileWidgetId = null;
 let turnstileReady = false;
+let turnstileRequired = Boolean(turnstileNode);
+let publicConfigPromise = null;
 
 const fieldNodes = {
   nome: document.querySelector("#nome"),
@@ -231,33 +233,65 @@ const fetchWithTimeout = async (url, options) => {
 };
 
 const loadPublicConfig = async () => {
-  const response = await fetchWithTimeout("/api/public-config", {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
+  if (publicConfigPromise) {
+    return publicConfigPromise;
+  }
+
+  publicConfigPromise = (async () => {
+    const response = await fetchWithTimeout("/api/public-config", {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    const config = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(GENERIC_SUBMIT_ERROR);
+    }
+
+    activeConsentVersion = String(config.consentVersion || activeConsentVersion || "").trim();
+    if (consentVersionInput && activeConsentVersion) {
+      consentVersionInput.value = activeConsentVersion;
+    }
+
+    return config;
+  })().catch((error) => {
+    publicConfigPromise = null;
+    throw error;
   });
 
-  const config = await response.json().catch(() => ({}));
-  if (!response.ok || !config.turnstileSiteKey) {
-    throw new Error(GENERIC_SUBMIT_ERROR);
-  }
+  return publicConfigPromise;
+};
 
-  activeConsentVersion = String(config.consentVersion || activeConsentVersion || "").trim();
-  if (consentVersionInput && activeConsentVersion) {
-    consentVersionInput.value = activeConsentVersion;
+const setTurnstileFieldVisible = (isVisible) => {
+  const field = turnstileNode?.closest(".form-field");
+  if (field) {
+    field.hidden = !isVisible;
   }
-
-  return config;
 };
 
 const renderTurnstile = async () => {
-  if (!turnstileNode || !window.turnstile || turnstileWidgetId !== null) {
+  if (!turnstileNode || turnstileWidgetId !== null) {
     return;
   }
 
   try {
     const config = await loadPublicConfig();
+    turnstileRequired = Boolean(config.turnstileEnabled && config.turnstileSiteKey);
+
+    if (!turnstileRequired) {
+      turnstileReady = true;
+      setTurnstileFieldVisible(false);
+      return;
+    }
+
+    setTurnstileFieldVisible(true);
+
+    if (!window.turnstile) {
+      return;
+    }
+
     turnstileWidgetId = window.turnstile.render(turnstileNode, {
       sitekey: config.turnstileSiteKey,
       theme: "dark",
@@ -325,7 +359,9 @@ const handleLeadSubmit = async (event) => {
     return;
   }
 
-  if (!turnstileReady || !payload["cf-turnstile-response"]) {
+  await renderTurnstile();
+
+  if (turnstileRequired && (!turnstileReady || !payload["cf-turnstile-response"])) {
     setFeedback("Confirme a verificação de segurança para continuar.", "error");
     return;
   }
@@ -445,6 +481,6 @@ if (leadForm) {
   leadForm.addEventListener("submit", handleLeadSubmit);
 }
 
-if (turnstileNode && window.turnstile) {
+if (turnstileNode) {
   renderTurnstile();
 }
