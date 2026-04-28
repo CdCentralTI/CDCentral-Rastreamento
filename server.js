@@ -59,6 +59,8 @@ const SHUTDOWN_TIMEOUT_MS = 10000;
 
 const PUBLIC_FILES = new Set([
   "index.html",
+  "styles.css",
+  "script.js",
   "assets/css/styles.css",
   "assets/js/script.js",
   "politica-de-privacidade.html",
