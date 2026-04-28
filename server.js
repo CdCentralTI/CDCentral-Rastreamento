@@ -59,8 +59,8 @@ const SHUTDOWN_TIMEOUT_MS = 10000;
 
 const PUBLIC_FILES = new Set([
   "index.html",
-  "styles.css",
-  "script.js",
+  "assets/css/styles.css",
+  "assets/js/script.js",
   "politica-de-privacidade.html",
   "termos-de-uso.html",
   "robots.txt",
@@ -70,11 +70,11 @@ const PUBLIC_FILES = new Set([
 
 const PUBLIC_DIRECTORIES = [
   {
-    prefix: "CD CENTRAL IMG/",
+    prefix: "assets/images/cdcentral/",
     extensions: new Set([".png", ".jpg", ".jpeg", ".svg", ".webp", ".ico"]),
   },
   {
-    prefix: "fonts/",
+    prefix: "assets/fonts/",
     extensions: new Set([".woff", ".woff2"]),
   },
 ];
@@ -430,40 +430,41 @@ const handleStatic = (req, res, pathname) => {
   });
 };
 
-const createAppServer = () =>
-  http.createServer((req, res) => {
-    let pathname = "/";
+const handleRequest = (req, res) => {
+  let pathname = "/";
 
-    try {
-      pathname = resolveRequestPath(req);
-    } catch (error) {
-      attachRequestLogger(req, res, "/");
-      sendText(req, res, 400, "Requisicao invalida.");
-      return;
-    }
+  try {
+    pathname = resolveRequestPath(req);
+  } catch (error) {
+    attachRequestLogger(req, res, "/");
+    sendText(req, res, 400, "Requisicao invalida.");
+    return;
+  }
 
-    attachRequestLogger(req, res, pathname);
+  attachRequestLogger(req, res, pathname);
 
-    if (pathname === "/health" || pathname === "/healthz") {
-      handleHealth(req, res);
-      return;
-    }
+  if (pathname === "/health" || pathname === "/healthz") {
+    handleHealth(req, res);
+    return;
+  }
 
-    if (pathname.startsWith("/api/")) {
-      handleApi(req, res, pathname).catch((error) => {
-        logSafeError("Unhandled API error:", error);
+  if (pathname.startsWith("/api/")) {
+    handleApi(req, res, pathname).catch((error) => {
+      logSafeError("Unhandled API error:", error);
 
-        if (!res.writableEnded) {
-          sendJson(req, res, 500, {
-            message: IS_PRODUCTION ? GENERIC_ERROR_MESSAGE : error.message || GENERIC_ERROR_MESSAGE,
-          });
-        }
-      });
-      return;
-    }
+      if (!res.writableEnded) {
+        sendJson(req, res, 500, {
+          message: IS_PRODUCTION ? GENERIC_ERROR_MESSAGE : error.message || GENERIC_ERROR_MESSAGE,
+        });
+      }
+    });
+    return;
+  }
 
-    handleStatic(req, res, pathname);
-  });
+  handleStatic(req, res, pathname);
+};
+
+const createAppServer = () => http.createServer(handleRequest);
 
 let server;
 
@@ -522,7 +523,7 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = {
+module.exports = Object.assign(handleRequest, {
   createAppServer,
   startServer,
-};
+});

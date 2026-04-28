@@ -29,17 +29,17 @@ O site foi pensado para:
 ```text
 .
 |-- index.html
-|-- styles.css
-|-- script.js
+|-- assets/css/styles.css
+|-- assets/js/script.js
 |-- politica-de-privacidade.html
 |-- termos-de-uso.html
 |-- server.js
 |-- serve-local.js
 |-- package.json
 |-- package-lock.json
-|-- ecosystem.config.cjs
-|-- DEPLOY-HOSTINGER.md
-|-- DEPLOY-VPS.md
+|-- config/pm2/ecosystem.config.cjs
+|-- docs/deploy/HOSTINGER.md
+|-- docs/deploy/VPS.md
 |-- robots.txt
 |-- sitemap.xml
 |-- vercel.json
@@ -53,10 +53,10 @@ O site foi pensado para:
 |   |-- app-config.js
 |   |-- http-utils.js
 |   `-- leads-service.js
-|-- supabase/
+|-- database/supabase/
 |   `-- leads-schema.sql
-|-- fonts/
-|-- CD CENTRAL IMG/
+|-- assets/fonts/
+|-- assets/images/cdcentral/
 `-- .env.example
 ```
 
@@ -66,10 +66,10 @@ O site foi pensado para:
   Página principal do site. Contém:
   hero, soluções, benefícios, como funciona, contato, CTA final e rodapé.
 
-- [styles.css](./styles.css)
+- [assets/css/styles.css](./assets/css/styles.css)
   Todo o visual do projeto: layout, responsividade, animações, fundo, cards, formulário, menu mobile e footer.
 
-- [script.js](./script.js)
+- [assets/js/script.js](./assets/js/script.js)
   Controla:
   menu mobile, animação de reveal, ano automático no rodapé, máscara do WhatsApp, validação do formulário e envio para `/api/leads`.
 
@@ -79,10 +79,10 @@ O site foi pensado para:
 - [serve-local.js](./serve-local.js)
   Alias de compatibilidade que inicia [server.js](./server.js).
 
-- [ecosystem.config.cjs](./ecosystem.config.cjs)
+- [config/pm2/ecosystem.config.cjs](./config/pm2/ecosystem.config.cjs)
   Configuração opcional de PM2 para VPS.
 
-- [DEPLOY-HOSTINGER.md](./DEPLOY-HOSTINGER.md) e [DEPLOY-VPS.md](./DEPLOY-VPS.md)
+- [docs/deploy/HOSTINGER.md](./docs/deploy/HOSTINGER.md) e [docs/deploy/VPS.md](./docs/deploy/VPS.md)
   Guias de deploy para Hostinger Node.js Web App e VPS.
 
 - [scripts/update-csp-hash.js](./scripts/update-csp-hash.js)
@@ -103,7 +103,7 @@ O site foi pensado para:
 - [lib/leads-service.js](./lib/leads-service.js)
   Regras de normalização, validação e envio dos dados para o Supabase.
 
-- [supabase/leads-schema.sql](./supabase/leads-schema.sql)
+- [database/supabase/leads-schema.sql](./database/supabase/leads-schema.sql)
   Estrutura esperada da tabela de leads, com RLS ativado e constraints básicas de qualidade dos dados.
 
 ## Seções da landing page
@@ -146,7 +146,7 @@ Exemplos de mudança:
 
 ### Estilo visual
 
-Edite [styles.css](./styles.css).
+Edite [assets/css/styles.css](./assets/css/styles.css).
 
 Os tokens principais ficam no seletor `:root`, como:
 
@@ -161,7 +161,7 @@ Os breakpoints atuais cuidam de mobile, tablet e desktop.
 
 ### Comportamentos do frontend
 
-Edite [script.js](./script.js).
+Edite [assets/js/script.js](./assets/js/script.js).
 
 Hoje o script cobre:
 
@@ -367,7 +367,7 @@ curl.exe -i http://127.0.0.1:3000/health
 
 ## Publicação
 
-O projeto deve ser publicado como aplicação Node.js permanente. Para Hostinger Node.js Web App, use [DEPLOY-HOSTINGER.md](./DEPLOY-HOSTINGER.md). Para VPS com PM2 e Nginx, use [DEPLOY-VPS.md](./DEPLOY-VPS.md).
+O projeto deve ser publicado como aplicação Node.js permanente. Para Hostinger Node.js Web App, use [docs/deploy/HOSTINGER.md](./docs/deploy/HOSTINGER.md). Para VPS com PM2 e Nginx, use [docs/deploy/VPS.md](./docs/deploy/VPS.md).
 
 Pontos importantes na publicação:
 
@@ -379,7 +379,7 @@ Pontos importantes na publicação:
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
 - configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` antes de usar `REQUIRE_TURNSTILE=1`;
 - configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` antes de usar `REQUIRE_EXTERNAL_RATE_LIMIT=1`;
-- aplicar [supabase/leads-schema.sql](./supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
+- aplicar [database/supabase/leads-schema.sql](./database/supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados.
 
 ### Estratégia Supabase/RLS
 
@@ -432,7 +432,7 @@ Procure por `mailto:` em [index.html](./index.html).
 O fundo é composto por:
 
 - gradientes aplicados no `body`;
-- elementos `.site-bg`, `.orb--left`, `.orb--right` e `.scan-lines` em [styles.css](./styles.css).
+- elementos `.site-bg`, `.orb--left`, `.orb--right` e `.scan-lines` em [assets/css/styles.css](./assets/css/styles.css).
 
 ## Observações
 

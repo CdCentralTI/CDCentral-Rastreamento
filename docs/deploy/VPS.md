@@ -113,7 +113,7 @@ Inicie:
 
 ```bash
 mkdir -p logs
-pm2 start ecosystem.config.cjs
+pm2 start config/pm2/ecosystem.config.cjs
 pm2 status
 pm2 logs cdcentral-rastreamento
 ```
@@ -208,13 +208,13 @@ Depois do SSL, confira que `.env` usa `SITE_URL=https://seudominio.com.br`.
 curl -i https://seudominio.com.br/health
 curl -i https://seudominio.com.br/api/public-config
 curl -I https://seudominio.com.br/
-curl -I https://seudominio.com.br/styles.css
-curl -I https://seudominio.com.br/script.js
-curl -I https://seudominio.com.br/fonts/manrope-latin.woff2
+curl -I https://seudominio.com.br/assets/css/styles.css
+curl -I https://seudominio.com.br/assets/js/script.js
+curl -I https://seudominio.com.br/assets/fonts/manrope-latin.woff2
 curl -I https://seudominio.com.br/.well-known/security.txt
 ```
 
-`styles.css` e `script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
+`assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
 
 Arquivos sensiveis devem retornar 404:
 
@@ -224,7 +224,7 @@ curl -I https://seudominio.com.br/package.json
 curl -I https://seudominio.com.br/package-lock.json
 curl -I https://seudominio.com.br/api/leads.js
 curl -I https://seudominio.com.br/lib/http-utils.js
-curl -I https://seudominio.com.br/supabase/leads-schema.sql
+curl -I https://seudominio.com.br/database/supabase/leads-schema.sql
 ```
 
 Teste o formulario no navegador para validar Turnstile real, origem, Supabase e rate limit.
@@ -257,7 +257,7 @@ npm install --omit=dev
 pm2 restart cdcentral-rastreamento
 ```
 
-Se alterar o schema, aplique `supabase/leads-schema.sql` no Supabase.
+Se alterar o schema, aplique `database/supabase/leads-schema.sql` no Supabase.
 
 ## Troubleshooting
 
@@ -289,4 +289,4 @@ Se alterar o schema, aplique `supabase/leads-schema.sql` no Supabase.
 Arquivos estaticos nao aparecem:
 
 - Confirme que o arquivo esta na lista publica do `server.js`.
-- `api/`, `lib/`, `supabase/`, `.env`, logs e arquivos internos sao bloqueados de proposito.
+- `api/`, `lib/`, `database/supabase/`, `.env`, logs e arquivos internos sao bloqueados de proposito.

@@ -3,7 +3,7 @@
   font-style: normal;
   font-weight: 400 800;
   font-display: swap;
-  src: url("./fonts/manrope-latin.woff2") format("woff2");
+  src: url("../fonts/manrope-latin.woff2") format("woff2");
 }
 
 @font-face {
@@ -11,7 +11,7 @@
   font-style: normal;
   font-weight: 600 800;
   font-display: swap;
-  src: url("./fonts/sora-latin.woff2") format("woff2");
+  src: url("../fonts/sora-latin.woff2") format("woff2");
 }
 
 :root {

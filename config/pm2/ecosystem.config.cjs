@@ -1,8 +1,13 @@
+const path = require("path");
+
+const root = path.resolve(__dirname, "../..");
+
 module.exports = {
   apps: [
     {
       name: "cdcentral-rastreamento",
-      script: "server.js",
+      script: path.join(root, "server.js"),
+      cwd: root,
       instances: 1,
       exec_mode: "fork",
       env: {
@@ -14,8 +19,8 @@ module.exports = {
         ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION: "0",
       },
       max_memory_restart: "300M",
-      out_file: "./logs/out.log",
-      error_file: "./logs/error.log",
+      out_file: path.join(root, "logs/out.log"),
+      error_file: path.join(root, "logs/error.log"),
       merge_logs: true,
       time: true,
     },

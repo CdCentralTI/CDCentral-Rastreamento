@@ -8,4 +8,4 @@ README.md
 scripts/
 server-*.log
 serve-local.js
-supabase/
+database/supabase/

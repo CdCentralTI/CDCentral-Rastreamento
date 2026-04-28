@@ -22,7 +22,7 @@
       ]
     },
     {
-      "source": "/styles.css",
+      "source": "/assets/css/styles.css",
       "headers": [
         {
           "key": "Cache-Control",
@@ -35,7 +35,7 @@
       ]
     },
     {
-      "source": "/script.js",
+      "source": "/assets/js/script.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -48,7 +48,7 @@
       ]
     },
     {
-      "source": "/CD CENTRAL IMG/(.*)",
+      "source": "/assets/images/cdcentral/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -61,7 +61,7 @@
       ]
     },
     {
-      "source": "/fonts/(.*)",
+      "source": "/assets/fonts/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

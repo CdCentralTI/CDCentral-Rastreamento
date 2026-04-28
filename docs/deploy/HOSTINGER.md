@@ -19,13 +19,13 @@ Suba o projeto com estes arquivos e pastas:
 
 ```text
 api/
-CD CENTRAL IMG/
-fonts/
+assets/images/cdcentral/
+assets/fonts/
 lib/
 .well-known/
 index.html
-styles.css
-script.js
+assets/css/styles.css
+assets/js/script.js
 politica-de-privacidade.html
 termos-de-uso.html
 robots.txt
@@ -40,9 +40,9 @@ Arquivos opcionais para referencia interna, mas nao necessarios no runtime:
 
 ```text
 README.md
-DEPLOY-HOSTINGER.md
-DEPLOY-VPS.md
-supabase/leads-schema.sql
+docs/deploy/HOSTINGER.md
+docs/deploy/VPS.md
+database/supabase/leads-schema.sql
 ```
 
 Nao suba em ZIP manual:
@@ -165,13 +165,13 @@ Site:
 
 ```bash
 curl -I https://seudominio.com.br/
-curl -I https://seudominio.com.br/styles.css
-curl -I https://seudominio.com.br/script.js
-curl -I https://seudominio.com.br/fonts/manrope-latin.woff2
+curl -I https://seudominio.com.br/assets/css/styles.css
+curl -I https://seudominio.com.br/assets/js/script.js
+curl -I https://seudominio.com.br/assets/fonts/manrope-latin.woff2
 curl -I https://seudominio.com.br/.well-known/security.txt
 ```
 
-`styles.css` e `script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
+`assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
 
 Arquivos sensiveis devem retornar 404:
 
@@ -180,7 +180,7 @@ curl -I https://seudominio.com.br/.env
 curl -I https://seudominio.com.br/package.json
 curl -I https://seudominio.com.br/api/leads.js
 curl -I https://seudominio.com.br/lib/leads-service.js
-curl -I https://seudominio.com.br/supabase/leads-schema.sql
+curl -I https://seudominio.com.br/database/supabase/leads-schema.sql
 ```
 
 Envio de lead:
