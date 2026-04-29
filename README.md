@@ -29,7 +29,6 @@ O site foi pensado para:
 ```text
 .
 |-- server.js
-|-- serve-local.js
 |-- package.json
 |-- package-lock.json
 |-- config/pm2/ecosystem.config.cjs
@@ -77,9 +76,6 @@ O site foi pensado para:
 
 - [server.js](./server.js)
   Servidor principal de produção. Serve arquivos públicos, aplica headers/cache/logs, expõe `/health` e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report`.
-
-- [serve-local.js](./serve-local.js)
-  Alias de compatibilidade que inicia [server.js](./server.js).
 
 - [config/pm2/ecosystem.config.cjs](./config/pm2/ecosystem.config.cjs)
   Configuração opcional de PM2 para VPS.
@@ -439,6 +435,6 @@ O fundo é composto por:
 ## Observações
 
 - O projeto não usa framework frontend.
-- O servidor principal é [server.js](./server.js); [serve-local.js](./serve-local.js) existe apenas por compatibilidade.
+- O servidor principal é [server.js](./server.js).
 - O backend depende de `fetch` disponível no runtime, por isso Node 20+ é o alvo recomendado.
 - A documentação deve ser atualizada sempre que houver mudança de campos, links, estrutura ou fluxo de deploy.

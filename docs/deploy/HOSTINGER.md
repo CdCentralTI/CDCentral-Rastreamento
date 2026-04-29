@@ -32,7 +32,6 @@ public/termos-de-uso.html
 public/robots.txt
 public/sitemap.xml
 server.js
-serve-local.js
 package.json
 package-lock.json
 ```

@@ -3,8 +3,8 @@
 const fs = require("fs");
 const crypto = require("crypto");
 const http = require("http");
-const { isIP } = require("net");
 const path = require("path");
+const { getClientIp } = require("./lib/http-utils");
 
 const workspaceRoot = path.resolve(__dirname);
 const publicRoot = path.join(workspaceRoot, "public");
@@ -103,48 +103,7 @@ const API_HANDLERS = new Map([
   ["/api/csp-report", cspReportHandler],
 ]);
 
-const normalizeIpCandidate = (value) => {
-  let candidate = String(value || "").trim().replace(/^"|"$/g, "");
-  if (!candidate) {
-    return "";
-  }
-
-  if (candidate.startsWith("[") && candidate.includes("]")) {
-    candidate = candidate.slice(1, candidate.indexOf("]"));
-  } else {
-    const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
-    if (ipv4WithPort) {
-      candidate = ipv4WithPort[1];
-    }
-  }
-
-  candidate = candidate.replace(/^::ffff:/i, "");
-  return isIP(candidate) ? candidate : "";
-};
-
-const getForwardedForIp = (headerValue) => {
-  return (
-    String(headerValue || "")
-      .split(",")
-      .map(normalizeIpCandidate)
-      .find(Boolean) || ""
-  );
-};
-
-const getClientIp = (req) => {
-  const socketIp = normalizeIpCandidate(req.socket?.remoteAddress);
-
-  if (process.env.TRUST_PROXY_HEADERS === "1") {
-    return (
-      getForwardedForIp(req.headers["x-forwarded-for"]) ||
-      normalizeIpCandidate(req.headers["x-real-ip"]) ||
-      socketIp ||
-      "unknown"
-    );
-  }
-
-  return socketIp || "unknown";
-};
+const getRequestClientIp = (req) => getClientIp(req, { trustProxyHeaders: process.env.TRUST_PROXY_HEADERS === "1" });
 
 const getSiteOrigin = () => {
   try {
@@ -346,7 +305,7 @@ const attachRequestLogger = (req, res, pathname) => {
       logged = true;
       const durationMs = Number((process.hrtime.bigint() - startedAt) / 1000000n);
       console.log(
-        `[${new Date().toISOString()}] ${req.method} ${pathname} ${res.statusCode} ${durationMs}ms ip=${getClientIp(req)}`
+        `[${new Date().toISOString()}] ${req.method} ${pathname} ${res.statusCode} ${durationMs}ms ip=${getRequestClientIp(req)}`
       );
     }
 

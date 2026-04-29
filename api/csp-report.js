@@ -1,7 +1,6 @@
 "use strict";
 
-const { isIP } = require("net");
-const { createRateLimiter, isJsonContentType } = require("../lib/http-utils");
+const { createRateLimiter, getClientIp: getRequestClientIp, isJsonContentType } = require("../lib/http-utils");
 
 const MAX_REPORT_BYTES = 8 * 1024;
 const CSP_REPORT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -17,48 +16,7 @@ const isCspReportRateLimited = createRateLimiter({
   requireExternalInProduction: false,
 });
 
-const normalizeIpCandidate = (value) => {
-  let candidate = String(value || "").trim().replace(/^"|"$/g, "");
-  if (!candidate) {
-    return "";
-  }
-
-  if (candidate.startsWith("[") && candidate.includes("]")) {
-    candidate = candidate.slice(1, candidate.indexOf("]"));
-  } else {
-    const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
-    if (ipv4WithPort) {
-      candidate = ipv4WithPort[1];
-    }
-  }
-
-  candidate = candidate.replace(/^::ffff:/i, "");
-  return isIP(candidate) ? candidate : "";
-};
-
-const getForwardedForIp = (headerValue) => {
-  return (
-    String(headerValue || "")
-      .split(",")
-      .map(normalizeIpCandidate)
-      .find(Boolean) || ""
-  );
-};
-
-const getClientIp = (req) => {
-  const socketIp = normalizeIpCandidate(req.socket?.remoteAddress);
-
-  if (TRUST_PROXY_HEADERS) {
-    return (
-      getForwardedForIp(req.headers["x-forwarded-for"]) ||
-      normalizeIpCandidate(req.headers["x-real-ip"]) ||
-      socketIp ||
-      "unknown"
-    );
-  }
-
-  return socketIp || "unknown";
-};
+const getClientIp = (req) => getRequestClientIp(req, { trustProxyHeaders: TRUST_PROXY_HEADERS });
 
 const isCspReportContentType = (value) => {
   const mediaType = String(value || "")

@@ -1,9 +1,8 @@
 "use strict";
 
-const { isIP } = require("net");
 const { getConsentVersion } = require("../lib/app-config");
 const { LeadStorageError, normalizeLead, validateLead, saveLeadToSupabase } = require("../lib/leads-service");
-const { HttpError, createRateLimiter, readJsonBody } = require("../lib/http-utils");
+const { HttpError, createRateLimiter, getClientIp: getRequestClientIp, readJsonBody } = require("../lib/http-utils");
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
@@ -109,48 +108,7 @@ const getAllowedOrigin = (req) => {
   return "";
 };
 
-const normalizeIpCandidate = (value) => {
-  let candidate = String(value || "").trim().replace(/^"|"$/g, "");
-  if (!candidate) {
-    return "";
-  }
-
-  if (candidate.startsWith("[") && candidate.includes("]")) {
-    candidate = candidate.slice(1, candidate.indexOf("]"));
-  } else {
-    const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
-    if (ipv4WithPort) {
-      candidate = ipv4WithPort[1];
-    }
-  }
-
-  candidate = candidate.replace(/^::ffff:/i, "");
-  return isIP(candidate) ? candidate : "";
-};
-
-const getForwardedForIp = (headerValue) => {
-  const candidates = String(headerValue || "")
-    .split(",")
-    .map(normalizeIpCandidate)
-    .filter(Boolean);
-
-  return candidates[0] || "";
-};
-
-const getClientIp = (req) => {
-  const socketIp = normalizeIpCandidate(req.socket?.remoteAddress);
-
-  if (TRUST_PROXY_HEADERS) {
-    return (
-      getForwardedForIp(req.headers["x-forwarded-for"]) ||
-      normalizeIpCandidate(req.headers["x-real-ip"]) ||
-      socketIp ||
-      "unknown"
-    );
-  }
-
-  return socketIp || "unknown";
-};
+const getClientIp = (req) => getRequestClientIp(req, { trustProxyHeaders: TRUST_PROXY_HEADERS });
 
 const isCrossSiteFetch = (req) => {
   return String(req.headers["sec-fetch-site"] || "").toLowerCase() === "cross-site";
