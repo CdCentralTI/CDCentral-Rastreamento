@@ -58,11 +58,29 @@ const normalizeOrigin = (value) => {
   }
 };
 
+const getCanonicalTurnstileHosts = () => {
+  const hosts = new Set();
+
+  try {
+    hosts.add(new URL(process.env.SITE_URL || "https://cdcentralrastreamento.com.br").host.toLowerCase());
+  } catch (error) {}
+
+  String(process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .forEach((origin) => {
+      try {
+        hosts.add(new URL(origin.trim()).host.toLowerCase());
+      } catch (error) {}
+    });
+
+  return hosts;
+};
+
 const getConfiguredOrigins = () => {
   const configuredOrigins = [
     process.env.SITE_URL,
     process.env.ALLOWED_ORIGINS,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
+    !IS_DEPLOYED_RUNTIME && process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
     ALLOW_LOCAL_ORIGINS ? LOCAL_ALLOWED_ORIGINS.join(",") : "",
   ]
     .flatMap((value) => String(value || "").split(","))
@@ -207,6 +225,11 @@ const validateTurnstileToken = async (token, remoteIp) => {
     const result = await response.json().catch(() => ({}));
     if (result.success !== true) {
       throw new HttpError(400, "Verificacao de seguranca invalida.", "invalid_turnstile_token");
+    }
+
+    const hostname = String(result.hostname || "").trim().toLowerCase();
+    if (hostname && !getCanonicalTurnstileHosts().has(hostname)) {
+      throw new HttpError(400, "Verificacao de seguranca invalida.", "invalid_turnstile_hostname");
     }
   } finally {
     clearTimeout(timeout);
