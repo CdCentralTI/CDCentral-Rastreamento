@@ -1,6 +1,6 @@
 "use strict";
 
-const { createRateLimiter, getClientIp: getRequestClientIp, isJsonContentType } = require("../lib/http-utils");
+const { createRateLimiter, getClientIp: getRequestClientIp } = require("../lib/http-utils");
 
 const MAX_REPORT_BYTES = 8 * 1024;
 const CSP_REPORT_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -24,7 +24,7 @@ const isCspReportContentType = (value) => {
     .trim()
     .toLowerCase();
 
-  return mediaType === "application/csp-report" || isJsonContentType(value);
+  return mediaType === "application/csp-report" || mediaType === "application/reports+json";
 };
 
 const readBody = async (req) => {
