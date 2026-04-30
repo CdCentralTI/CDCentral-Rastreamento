@@ -149,4 +149,5 @@ test("grava lead valido com dados normalizados", async () => {
   assert.equal(insertedRows[0].whatsapp, "98987577275");
   assert.equal(insertedRows[0].tipo, "Pessoa fisica");
   assert.equal(insertedRows[0].veiculos, 2);
+  assert.equal(insertedRows[0].consent_ip, "127.0.0.0");
 });

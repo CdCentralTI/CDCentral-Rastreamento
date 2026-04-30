@@ -3,7 +3,14 @@
 const assert = require("node:assert/strict");
 const { PassThrough } = require("node:stream");
 const test = require("node:test");
-const { HttpError, getClientIp, isJsonContentType, normalizeIpCandidate, readJsonBody } = require("../lib/http-utils");
+const {
+  HttpError,
+  anonymizeIp,
+  getClientIp,
+  isJsonContentType,
+  normalizeIpCandidate,
+  readJsonBody,
+} = require("../lib/http-utils");
 
 const createRequestStream = (body, headers = {}, method = "POST") => {
   const req = new PassThrough();
@@ -36,6 +43,13 @@ test("normaliza IPs de socket e proxy sem aceitar valores invalidos", () => {
 
   assert.equal(getClientIp(req), "127.0.0.1");
   assert.equal(getClientIp(req, { trustProxyHeaders: true }), "203.0.113.10");
+});
+
+test("anonimiza IPs para registro de consentimento", () => {
+  assert.equal(anonymizeIp("203.0.113.45"), "203.0.113.0");
+  assert.equal(anonymizeIp("2001:0db8:abcd:0012:0000:0000:0000:0001"), "2001:db8:abcd:12::/64");
+  assert.equal(anonymizeIp("unknown"), "unknown");
+  assert.equal(anonymizeIp(""), "unknown");
 });
 
 test("le corpo JSON valido respeitando limite de tamanho", async () => {
