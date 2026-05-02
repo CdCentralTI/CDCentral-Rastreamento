@@ -6,11 +6,11 @@ process.env.REQUIRE_TURNSTILE = "1";
 process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "0";
 process.env.ALLOW_LOCAL_ORIGINS = "1";
 process.env.SITE_URL = "https://cdcentralrastreamento.com.br";
-process.env.TURNSTILE_SITE_KEY = "turnstile_test_site_key";
-process.env.TURNSTILE_SECRET_KEY = "turnstile_test_secret";
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_test_key";
 process.env.SUPABASE_LEADS_TABLE = "leads";
+delete process.env.TURNSTILE_SITE_KEY;
+delete process.env.TURNSTILE_SECRET_KEY;
 
 const assert = require("node:assert/strict");
 const http = require("node:http");
@@ -20,7 +20,7 @@ const { createAppServer } = require("../server");
 const originalFetch = global.fetch;
 let server;
 let port;
-let fetchCalls = [];
+let fetchCalls = 0;
 
 const request = ({ method = "GET", path = "/", headers = {}, body = "" }) =>
   new Promise((resolve, reject) => {
@@ -55,14 +55,14 @@ const request = ({ method = "GET", path = "/", headers = {}, body = "" }) =>
   });
 
 test.before(async () => {
-  global.fetch = async (url, options) => {
-    fetchCalls.push({ url: String(url), options });
+  global.fetch = async () => {
+    fetchCalls += 1;
     return {
       ok: true,
-      json: async () => ({
-        success: true,
-        hostname: "preview.example.com",
-      }),
+      status: 201,
+      statusText: "Created",
+      text: async () => "",
+      json: async () => ({ success: true, hostname: "cdcentralrastreamento.com.br" }),
     };
   };
 
@@ -81,10 +81,19 @@ test.after(async () => {
 });
 
 test.beforeEach(() => {
-  fetchCalls = [];
+  fetchCalls = 0;
 });
 
-test("rejeita Turnstile com hostname fora do allowlist", async () => {
+test("public-config falha fechado quando Turnstile obrigatorio esta incompleto", async () => {
+  const response = await request({ path: "/api/public-config" });
+
+  assert.equal(response.statusCode, 503);
+  assert.deepEqual(JSON.parse(response.body), {
+    message: "Verificacao de seguranca indisponivel.",
+  });
+});
+
+test("api de leads nao grava quando Turnstile obrigatorio esta incompleto", async () => {
   const response = await request({
     method: "POST",
     path: "/api/leads",
@@ -101,12 +110,10 @@ test("rejeita Turnstile com hostname fora do allowlist", async () => {
       startedAt: String(Date.now() - 2000),
       consent: true,
       consentVersion: "2026-04-28",
-      "cf-turnstile-response": "valid-looking-token",
     }),
   });
 
-  assert.equal(response.statusCode, 400);
-  assert.equal(JSON.parse(response.body).message, "Verificacao de seguranca invalida.");
-  assert.equal(fetchCalls.length, 1);
-  assert.match(fetchCalls[0].url, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
+  assert.equal(response.statusCode, 503);
+  assert.equal(JSON.parse(response.body).message, "Verificacao de seguranca indisponivel.");
+  assert.equal(fetchCalls, 0);
 });

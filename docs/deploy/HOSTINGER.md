@@ -96,15 +96,18 @@ TRUST_PROXY_HEADERS=1
 ALLOW_LOCAL_ORIGINS=0
 REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
-SITE_URL=https://seudominio.com.br
-ALLOWED_ORIGINS=https://seudominio.com.br
+SITE_URL=https://cdcentralrastreamento.com.br
+ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
+ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
+REQUIRE_TURNSTILE=1
 TURNSTILE_SITE_KEY=your_public_turnstile_site_key
 TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+REQUIRE_EXTERNAL_RATE_LIMIT=1
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 ```
 
@@ -120,6 +123,8 @@ O schema padrao deixa `public.leads` fechada para `anon` e `authenticated`. A es
 - a API valida origem, Turnstile, rate limit, payload e consentimento;
 - a API grava no Supabase usando `SUPABASE_LEADS_INSERT_KEY` somente no backend;
 - use uma chave server-side, preferencialmente `service_role` ou secret key, nunca anon/publishable key.
+
+`SUPABASE_SERVICE_ROLE_KEY` nao e usado como fallback implicito. Se a hospedagem injeta esse nome e voce decidir usa-lo, configure `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1` conscientemente.
 
 Se voce preferir usar anon/publishable key, sera necessario redesenhar as permissoes com uma funcao server-side segura. Nao exponha insert direto na tabela, pois isso contorna Turnstile e rate limit.
 
@@ -144,19 +149,19 @@ Se alterar variaveis depois do deploy, faca redeploy ou restart pelo painel para
 Health check:
 
 ```bash
-curl -i https://seudominio.com.br/health
+curl -i https://cdcentralrastreamento.com.br/health
 ```
 
 Resposta esperada:
 
 ```json
-{"status":"ok","service":"cdcentral-rastreamento","environment":"production"}
+{"status":"ok"}
 ```
 
 Config publica do Turnstile:
 
 ```bash
-curl -i https://seudominio.com.br/api/public-config
+curl -i https://cdcentralrastreamento.com.br/api/public-config
 ```
 
 Deve responder JSON com `turnstileSiteKey`, sem secrets.
@@ -164,11 +169,11 @@ Deve responder JSON com `turnstileSiteKey`, sem secrets.
 Site:
 
 ```bash
-curl -I https://seudominio.com.br/
-curl -I https://seudominio.com.br/assets/css/styles.css
-curl -I https://seudominio.com.br/assets/js/script.js
-curl -I https://seudominio.com.br/assets/fonts/manrope-latin.woff2
-curl -I https://seudominio.com.br/.well-known/security.txt
+curl -I https://cdcentralrastreamento.com.br/
+curl -I https://cdcentralrastreamento.com.br/assets/css/styles.css
+curl -I https://cdcentralrastreamento.com.br/assets/js/script.js
+curl -I https://cdcentralrastreamento.com.br/assets/fonts/manrope-latin.woff2
+curl -I https://cdcentralrastreamento.com.br/.well-known/security.txt
 ```
 
 `assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
@@ -176,16 +181,16 @@ curl -I https://seudominio.com.br/.well-known/security.txt
 Arquivos sensiveis devem retornar 404:
 
 ```bash
-curl -I https://seudominio.com.br/.env
-curl -I https://seudominio.com.br/package.json
-curl -I https://seudominio.com.br/api/leads.js
-curl -I https://seudominio.com.br/lib/leads-service.js
-curl -I https://seudominio.com.br/database/supabase/leads-schema.sql
+curl -I https://cdcentralrastreamento.com.br/.env
+curl -I https://cdcentralrastreamento.com.br/package.json
+curl -I https://cdcentralrastreamento.com.br/api/leads.js
+curl -I https://cdcentralrastreamento.com.br/lib/leads-service.js
+curl -I https://cdcentralrastreamento.com.br/database/supabase/leads-schema.sql
 ```
 
 Envio de lead:
 
-1. Abra `https://seudominio.com.br/`.
+1. Abra `https://cdcentralrastreamento.com.br/`.
 2. Preencha o formulario.
 3. Marque o consentimento.
 4. Resolva o Turnstile.
@@ -195,8 +200,8 @@ Teste direto com Turnstile invalido:
 
 ```bash
 STARTED_AT=$(node -e 'console.log(Date.now() - 2000)')
-curl -i https://seudominio.com.br/api/leads \
-  -H "Origin: https://seudominio.com.br" \
+curl -i https://cdcentralrastreamento.com.br/api/leads \
+  -H "Origin: https://cdcentralrastreamento.com.br" \
   -H "Content-Type: application/json" \
   --data "{\"nome\":\"Teste Seguro\",\"whatsapp\":\"98987577275\",\"tipo\":\"Pessoa fisica\",\"veiculos\":\"1\",\"empresa\":\"\",\"startedAt\":\"$STARTED_AT\",\"consent\":true,\"consentVersion\":\"2026-04-28\",\"cf-turnstile-response\":\"invalid\"}"
 ```

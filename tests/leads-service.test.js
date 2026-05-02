@@ -67,3 +67,25 @@ test("bloqueia chave publica do Supabase em gravacao server-side", async () => {
     (error) => error instanceof LeadStorageError && error.code === "unsafe_supabase_key"
   );
 });
+
+test("bloqueia fallback implicito para SUPABASE_SERVICE_ROLE_KEY", async () => {
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  delete process.env.SUPABASE_LEADS_INSERT_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "sb_secret_service_role_test_key";
+  delete process.env.ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK;
+  process.env.SUPABASE_LEADS_TABLE = "leads";
+
+  await assert.rejects(
+    () =>
+      saveLeadToSupabase({
+        nome: "Maria Silva",
+        whatsapp: "98987577275",
+        tipo: "Pessoa fisica",
+        veiculos: 1,
+        consent_at: new Date().toISOString(),
+        consent_version: "2026-04-28",
+        consent_ip: "127.0.0.1",
+      }),
+    (error) => error instanceof LeadStorageError && error.code === "supabase_service_role_fallback_disabled"
+  );
+});

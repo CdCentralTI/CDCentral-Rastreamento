@@ -22,6 +22,7 @@ const jsFiles = [
   "lib/app-config.js",
   "lib/http-utils.js",
   "lib/leads-service.js",
+  "lib/turnstile-config.js",
   "public/assets/js/script.js",
   "scripts/lib/env.js",
   "scripts/optimize-images.js",
@@ -217,6 +218,44 @@ canonicalFiles.forEach((relativePath) => {
     errors.push(`${relativePath}: dominio canonico ausente (${canonicalSiteUrl})`);
   }
 });
+
+const robotsPath = path.join(publicRoot, "robots.txt");
+if (fs.existsSync(robotsPath)) {
+  const robots = fs.readFileSync(robotsPath, "utf8");
+  if (!robots.includes(`Sitemap: ${canonicalSiteUrl}/sitemap.xml`)) {
+    errors.push("public/robots.txt: sitemap deve apontar para o dominio canonico real");
+  }
+}
+
+const sitemapPath = path.join(publicRoot, "sitemap.xml");
+if (fs.existsSync(sitemapPath)) {
+  const sitemap = fs.readFileSync(sitemapPath, "utf8");
+  for (const match of sitemap.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+    if (!match[1].startsWith(`${canonicalSiteUrl}/`)) {
+      errors.push(`public/sitemap.xml: loc fora do dominio canonico real (${match[1]})`);
+    }
+  }
+}
+
+const securityTxtPath = path.join(publicRoot, ".well-known/security.txt");
+if (fs.existsSync(securityTxtPath)) {
+  const securityTxt = fs.readFileSync(securityTxtPath, "utf8");
+  if (!securityTxt.includes(`Canonical: ${canonicalSiteUrl}/.well-known/security.txt`)) {
+    errors.push("public/.well-known/security.txt: Canonical deve apontar para o dominio canonico real");
+  }
+}
+
+const serverPath = path.join(root, "server.js");
+if (fs.existsSync(serverPath)) {
+  const serverSource = fs.readFileSync(serverPath, "utf8");
+  if (!serverSource.includes(`const DEFAULT_SITE_URL = "${canonicalSiteUrl}"`)) {
+    errors.push("server.js: DEFAULT_SITE_URL deve apontar para o dominio canonico real");
+  }
+
+  if (!serverSource.includes('"Reporting-Endpoints"') || !serverSource.includes("/api/csp-report")) {
+    errors.push("server.js: Reporting-Endpoints deve apontar para /api/csp-report no dominio canonico");
+  }
+}
 
 if (fs.existsSync(vercelConfigPath)) {
   let vercelConfig = {};

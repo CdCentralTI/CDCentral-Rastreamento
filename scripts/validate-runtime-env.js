@@ -1,7 +1,6 @@
 "use strict";
 
 const {
-  getFirstEnv,
   hasPlaceholderValue,
   loadEnvFiles,
   normalizeOrigin,
@@ -69,6 +68,20 @@ const isPublicSupabaseKey = (key) => {
   return ["anon", "authenticated"].includes(String(payload?.role || "").toLowerCase());
 };
 
+const validateSupabaseServerKey = (name, value) => {
+  if (hasPlaceholderValue(value)) {
+    addError("supabase key", `${name} still looks like a placeholder`);
+    return;
+  }
+
+  if (isPublicSupabaseKey(value)) {
+    addError("supabase key", `${name} looks like an anon/publishable key; use a server-side key`);
+    return;
+  }
+
+  addOk("supabase key", `${name} is server-side (${redact(value)})`);
+};
+
 const requireVariable = (name, label = name) => {
   const value = String(process.env[name] || "").trim();
   if (!value) {
@@ -114,14 +127,19 @@ if (siteUrl) {
   }
 }
 
-const allowedOrigins = parseOriginList(process.env.ALLOWED_ORIGINS);
+const allowedOriginsRaw = String(process.env.ALLOWED_ORIGINS || "").trim();
+const allowedOrigins = parseOriginList(allowedOriginsRaw);
 const siteOrigin = normalizeOrigin(process.env.SITE_URL);
-if (!String(process.env.ALLOWED_ORIGINS || "").trim()) {
+if (!allowedOriginsRaw) {
   addError("allowed origins", "ALLOWED_ORIGINS is missing");
+} else if (hasPlaceholderValue(allowedOriginsRaw)) {
+  addError("allowed origins", "ALLOWED_ORIGINS still looks like a placeholder");
 } else if (allowedOrigins.length === 0) {
   addError("allowed origins", "ALLOWED_ORIGINS has no valid origins");
 } else if (siteOrigin && !allowedOrigins.includes(siteOrigin)) {
   addError("allowed origins", `ALLOWED_ORIGINS must include ${siteOrigin}`);
+} else if (isPublishedTarget && allowedOrigins.some((origin) => new URL(origin).protocol !== "https:")) {
+  addError("allowed origins", "ALLOWED_ORIGINS must use https origins in staging/production");
 } else {
   addOk("allowed origins", `${allowedOrigins.length} origin(s) configured`);
 }
@@ -131,15 +149,22 @@ if (supabaseUrl && !supabaseUrl.hostname.endsWith(".supabase.co")) {
   addWarn("supabase", `SUPABASE_URL host is ${supabaseUrl.hostname}; confirm this is intentional`);
 }
 
-const supabaseKey = getFirstEnv(["SUPABASE_LEADS_INSERT_KEY", "SUPABASE_SERVICE_ROLE_KEY"]);
-if (!supabaseKey.value) {
-  addError("supabase key", "SUPABASE_LEADS_INSERT_KEY or SUPABASE_SERVICE_ROLE_KEY is missing");
-} else if (hasPlaceholderValue(supabaseKey.value)) {
-  addError("supabase key", `${supabaseKey.name} still looks like a placeholder`);
-} else if (isPublicSupabaseKey(supabaseKey.value)) {
-  addError("supabase key", `${supabaseKey.name} looks like an anon/publishable key; use a server-side key`);
+const supabaseInsertKey = String(process.env.SUPABASE_LEADS_INSERT_KEY || "").trim();
+const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const allowSupabaseServiceRoleFallback = process.env.ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK === "1";
+
+if (supabaseInsertKey) {
+  validateSupabaseServerKey("SUPABASE_LEADS_INSERT_KEY", supabaseInsertKey);
+} else if (supabaseServiceRoleKey && allowSupabaseServiceRoleFallback) {
+  validateSupabaseServerKey("SUPABASE_SERVICE_ROLE_KEY", supabaseServiceRoleKey);
+  addWarn("supabase key", "SUPABASE_SERVICE_ROLE_KEY fallback is enabled by explicit opt-in");
+} else if (supabaseServiceRoleKey) {
+  addError(
+    "supabase key",
+    "SUPABASE_LEADS_INSERT_KEY is missing; SUPABASE_SERVICE_ROLE_KEY fallback requires ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1"
+  );
 } else {
-  addOk("supabase key", `${supabaseKey.name} is server-side (${redact(supabaseKey.value)})`);
+  addError("supabase key", "SUPABASE_LEADS_INSERT_KEY is missing");
 }
 
 const table = String(process.env.SUPABASE_LEADS_TABLE || "leads").trim();
@@ -154,7 +179,13 @@ const upstashToken = String(process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 const kvUrl = String(process.env.KV_REST_API_URL || "").trim();
 const kvToken = String(process.env.KV_REST_API_TOKEN || "").trim();
 
-if (upstashUrl || upstashToken) {
+if (isPublishedTarget) {
+  requireUrl("UPSTASH_REDIS_REST_URL", "upstash redis");
+  requireVariable("UPSTASH_REDIS_REST_TOKEN", "upstash redis");
+  if (kvUrl || kvToken) {
+    addWarn("upstash redis", "KV_REST_API_* is ignored for staging/production validation; configure UPSTASH_REDIS_REST_*");
+  }
+} else if (upstashUrl || upstashToken) {
   requireUrl("UPSTASH_REDIS_REST_URL", "upstash redis");
   requireVariable("UPSTASH_REDIS_REST_TOKEN", "upstash redis");
 } else if (kvUrl || kvToken) {

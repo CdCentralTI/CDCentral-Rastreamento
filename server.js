@@ -53,7 +53,6 @@ const cspReportHandler = require("./api/csp-report");
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
-const SERVICE_NAME = "cdcentral-rastreamento";
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel processar sua solicitacao agora.";
 const SHUTDOWN_TIMEOUT_MS = 10000;
 const DEFAULT_SITE_URL = "https://cdcentralrastreamento.com.br";
@@ -371,8 +370,6 @@ const handleHealth = (req, res) => {
 
   sendJson(req, res, 200, {
     status: "ok",
-    service: SERVICE_NAME,
-    environment: process.env.NODE_ENV,
   });
 };
 

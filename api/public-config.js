@@ -1,6 +1,9 @@
 "use strict";
 
 const { getConsentVersion } = require("../lib/app-config");
+const { getTurnstileConfig, isTurnstileFailClosed } = require("../lib/turnstile-config");
+
+const GENERIC_CONFIG_ERROR = "Verificacao de seguranca indisponivel.";
 
 const sendJson = (res, statusCode, payload) => {
   res.statusCode = statusCode;
@@ -21,18 +24,21 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY || "";
-  const hasTurnstileSecret = Boolean(process.env.TURNSTILE_SECRET_KEY);
-  const turnstileEnabled =
-    process.env.REQUIRE_TURNSTILE === "1"
-      ? Boolean(turnstileSiteKey)
-      : process.env.REQUIRE_TURNSTILE === "0"
-        ? false
-        : Boolean(turnstileSiteKey && hasTurnstileSecret);
+  const turnstileConfig = getTurnstileConfig();
+  if (isTurnstileFailClosed(turnstileConfig)) {
+    console.error("Public config unavailable:", {
+      code: "missing_turnstile_config",
+      missing: turnstileConfig.missing,
+    });
+    sendJson(res, 503, {
+      message: GENERIC_CONFIG_ERROR,
+    });
+    return;
+  }
 
   sendJson(res, 200, {
     consentVersion: getConsentVersion(),
-    turnstileEnabled,
-    turnstileSiteKey,
+    turnstileEnabled: turnstileConfig.enabled && turnstileConfig.configured,
+    turnstileSiteKey: turnstileConfig.enabled && turnstileConfig.configured ? turnstileConfig.siteKey : "",
   });
 };

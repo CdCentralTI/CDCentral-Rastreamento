@@ -2,6 +2,7 @@
 
 const { getConsentVersion } = require("../lib/app-config");
 const { LeadStorageError, normalizeLead, validateLead, saveLeadToSupabase } = require("../lib/leads-service");
+const { getTurnstileConfig, isTurnstileFailClosed } = require("../lib/turnstile-config");
 const {
   HttpError,
   anonymizeIp,
@@ -179,15 +180,16 @@ const hasValidConsent = (body) => {
 };
 
 const isTurnstileRequired = () => {
-  if (process.env.REQUIRE_TURNSTILE === "1") {
-    return true;
-  }
+  return getTurnstileConfig().enabled;
+};
 
-  if (process.env.REQUIRE_TURNSTILE === "0") {
-    return false;
+const assertTurnstileRuntimeConfig = () => {
+  const turnstileConfig = getTurnstileConfig();
+  if (isTurnstileFailClosed(turnstileConfig)) {
+    const error = new HttpError(503, "Verificacao de seguranca indisponivel.", "missing_turnstile_config");
+    error.details = turnstileConfig.missing.join(",");
+    throw error;
   }
-
-  return Boolean(process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
 };
 
 const getTurnstileToken = (body) => String(body["cf-turnstile-response"] || "").trim();
@@ -288,6 +290,8 @@ module.exports = async (req, res) => {
   }
 
   try {
+    assertTurnstileRuntimeConfig();
+
     if (await isLeadRateLimited(clientIp)) {
       sendJson(req, res, 429, {
         message: "Muitas tentativas em sequencia. Aguarde um instante e tente novamente.",
@@ -359,7 +363,8 @@ module.exports = async (req, res) => {
       }
 
       sendJson(req, res, error.statusCode, {
-        message: error.statusCode >= 500 ? GENERIC_ERROR_MESSAGE : error.message,
+        message:
+          error.statusCode >= 500 && error.code !== "missing_turnstile_config" ? GENERIC_ERROR_MESSAGE : error.message,
       });
       return;
     }

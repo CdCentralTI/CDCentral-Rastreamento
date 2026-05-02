@@ -64,19 +64,24 @@ TRUST_PROXY_HEADERS=1
 ALLOW_LOCAL_ORIGINS=0
 REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
-SITE_URL=https://seudominio.com.br
-ALLOWED_ORIGINS=https://seudominio.com.br
+SITE_URL=https://cdcentralrastreamento.com.br
+ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
+ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
+REQUIRE_TURNSTILE=1
 TURNSTILE_SITE_KEY=your_public_turnstile_site_key
 TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+REQUIRE_EXTERNAL_RATE_LIMIT=1
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 ```
 
 `CONSENT_VERSION` representa a fonte operacional da versao de consentimento enviada por `/api/public-config` e validada em `/api/leads`. Ao atualizar a Politica de Privacidade, altere essa variavel no `.env` da VPS e reinicie o PM2.
+
+`SUPABASE_SERVICE_ROLE_KEY` nao e usado como fallback implicito. Se voce decidir usar esse nome em vez de `SUPABASE_LEADS_INSERT_KEY`, configure `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1` conscientemente.
 
 Proteja o arquivo:
 
@@ -154,7 +159,7 @@ Conteudo:
 ```nginx
 server {
     listen 80;
-    server_name seudominio.com.br www.seudominio.com.br;
+    server_name cdcentralrastreamento.com.br www.cdcentralrastreamento.com.br;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -196,22 +201,22 @@ Nao abra `3000/tcp` publicamente. O Nginx acessa `http://127.0.0.1:3000` localme
 
 ```bash
 sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d seudominio.com.br -d www.seudominio.com.br
+sudo certbot --nginx -d cdcentralrastreamento.com.br -d www.cdcentralrastreamento.com.br
 sudo certbot renew --dry-run
 ```
 
-Depois do SSL, confira que `.env` usa `SITE_URL=https://seudominio.com.br`.
+Depois do SSL, confira que `.env` usa `SITE_URL=https://cdcentralrastreamento.com.br`.
 
 ## 10. Testar producao
 
 ```bash
-curl -i https://seudominio.com.br/health
-curl -i https://seudominio.com.br/api/public-config
-curl -I https://seudominio.com.br/
-curl -I https://seudominio.com.br/assets/css/styles.css
-curl -I https://seudominio.com.br/assets/js/script.js
-curl -I https://seudominio.com.br/assets/fonts/manrope-latin.woff2
-curl -I https://seudominio.com.br/.well-known/security.txt
+curl -i https://cdcentralrastreamento.com.br/health
+curl -i https://cdcentralrastreamento.com.br/api/public-config
+curl -I https://cdcentralrastreamento.com.br/
+curl -I https://cdcentralrastreamento.com.br/assets/css/styles.css
+curl -I https://cdcentralrastreamento.com.br/assets/js/script.js
+curl -I https://cdcentralrastreamento.com.br/assets/fonts/manrope-latin.woff2
+curl -I https://cdcentralrastreamento.com.br/.well-known/security.txt
 ```
 
 `assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
@@ -219,12 +224,12 @@ curl -I https://seudominio.com.br/.well-known/security.txt
 Arquivos sensiveis devem retornar 404:
 
 ```bash
-curl -I https://seudominio.com.br/.env
-curl -I https://seudominio.com.br/package.json
-curl -I https://seudominio.com.br/package-lock.json
-curl -I https://seudominio.com.br/api/leads.js
-curl -I https://seudominio.com.br/lib/http-utils.js
-curl -I https://seudominio.com.br/database/supabase/leads-schema.sql
+curl -I https://cdcentralrastreamento.com.br/.env
+curl -I https://cdcentralrastreamento.com.br/package.json
+curl -I https://cdcentralrastreamento.com.br/package-lock.json
+curl -I https://cdcentralrastreamento.com.br/api/leads.js
+curl -I https://cdcentralrastreamento.com.br/lib/http-utils.js
+curl -I https://cdcentralrastreamento.com.br/database/supabase/leads-schema.sql
 ```
 
 Teste o formulario no navegador para validar Turnstile real, origem, Supabase e rate limit.

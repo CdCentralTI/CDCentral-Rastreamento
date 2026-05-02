@@ -269,11 +269,12 @@ TRUST_PROXY_HEADERS=1
 ALLOW_LOCAL_ORIGINS=0
 REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
-SITE_URL=https://seudominio.com.br
-ALLOWED_ORIGINS=https://seudominio.com.br
+SITE_URL=https://cdcentralrastreamento.com.br
+ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
 ENABLE_CANONICAL_REDIRECT=0
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
+ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
 REQUIRE_TURNSTILE=1
 TURNSTILE_SITE_KEY=your_public_turnstile_site_key
@@ -291,7 +292,10 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `SUPABASE_LEADS_INSERT_KEY`
   Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para inserção. Não use chave publishable/anon aqui e não exponha essa variável no frontend.
-  Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API. Por compatibilidade, `SUPABASE_SERVICE_ROLE_KEY` também é aceita como fallback server-side.
+  Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API. `SUPABASE_SERVICE_ROLE_KEY` nao e mais aceito como fallback implicito.
+
+- `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK`
+  Use `1` apenas quando a plataforma injeta obrigatoriamente `SUPABASE_SERVICE_ROLE_KEY` e voce quer habilitar esse fallback de forma explicita. O padrao seguro e `0`.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -330,11 +334,11 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
   Chave secreta server-side usada para validar `cf-turnstile-response`. Não exponha no frontend.
 
 - `REQUIRE_TURNSTILE`
-  Use `1` para exigir Turnstile em produção. Se as chaves ainda não foram criadas, use `0` temporariamente para manter o formulário ativo sem derrubar `/api/public-config`.
+  Use `1` para exigir Turnstile em produção. Com `REQUIRE_TURNSTILE=1`, a API falha fechada se `TURNSTILE_SITE_KEY` ou `TURNSTILE_SECRET_KEY` estiver ausente.
 
 - `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
   Credenciais REST do Upstash Redis para rate limit distribuído.
-  Recomendadas em produção para rate limit distribuído.
+  Obrigatorias em staging/producao para rate limit distribuido.
 
 - `REQUIRE_EXTERNAL_RATE_LIMIT`
   Use `1` para explicitar que Redis/KV é obrigatório em produção. Em runtime publicado, esse é o comportamento padrão. Use `0` somente se aceitar fallback em memória.
@@ -354,7 +358,7 @@ Pré-requisito recomendado:
 ### Passos
 
 1. Crie um `.env.local` com base no `.env.example`.
-2. Preencha as credenciais do Supabase. Turnstile e Upstash/KV são recomendados em produção; em produção, configure Upstash/KV antes de publicar ou faça opt-out consciente com `REQUIRE_EXTERNAL_RATE_LIMIT=0`.
+2. Preencha as credenciais do Supabase. Em produção, `SITE_URL`, `ALLOWED_ORIGINS`, Turnstile e Upstash Redis são obrigatórios e devem passar em `node scripts/validate-runtime-env.js`.
 3. Instale as dependências:
 
 ```powershell
@@ -399,7 +403,7 @@ Para staging/preview, use um arquivo separado e ajuste o dominio esperado:
 
 ```powershell
 npx vercel env pull .env.staging.local --environment=preview --yes
-node scripts/validate-runtime-env.js --env=.env.staging.local --target=staging --domain=staging.seudominio.com.br
+node scripts/validate-runtime-env.js --env=.env.staging.local --target=staging --domain=staging.cdcentralrastreamento.com.br
 ```
 
 Depois de confirmar as variaveis, valide a gravacao real no Supabase. O comando insere uma linha com prefixo `[SMOKE]` na tabela configurada:
@@ -428,15 +432,15 @@ Pontos importantes na publicação:
 - manter `ENABLE_CANONICAL_REDIRECT=0` até o domínio final resolver em DNS e só então ativar o redirect canônico;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
-- manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção;
-- configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` antes de usar `REQUIRE_TURNSTILE=1`;
-- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` antes de usar `REQUIRE_EXTERNAL_RATE_LIMIT=1`;
+- manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção ou habilitar `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1` de forma explicita;
+- configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`; com `REQUIRE_TURNSTILE=1`, a falta de qualquer chave derruba `/api/public-config` e `/api/leads` de forma fechada;
+- configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` em staging/producao;
 - aplicar [database/supabase/leads-schema.sql](./database/supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados;
 - rodar `node scripts/validate-runtime-env.js`, `node scripts/smoke-supabase-lead.js` e `node scripts/smoke-deploy.js` para fechar a validacao do ambiente real.
 
 ### Estratégia Supabase/RLS
 
-O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile quando configurado e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY` ou o fallback server-side `SUPABASE_SERVICE_ROLE_KEY` no backend.
+O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile quando configurado e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY`. O nome `SUPABASE_SERVICE_ROLE_KEY` só é aceito como fallback quando `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1`.
 
 ## Testes manuais de segurança
 
@@ -444,6 +448,7 @@ Antes de publicar, confirme:
 
 - `POST /api/leads` sem `Origin` em produção retorna `403`;
 - `POST /api/leads` com `cf-turnstile-response` inválido retorna `400` quando `REQUIRE_TURNSTILE=1` ou as chaves Turnstile estão configuradas;
+- `POST /api/leads` e `/api/public-config` falham fechados quando `REQUIRE_TURNSTILE=1` e alguma chave Turnstile esta ausente;
 - `POST /api/leads` sem `consent: true` retorna `422`;
 - mais de 5 `POST /api/leads` em 10 minutos para o mesmo IP retorna `429`;
 - o HTML servido não contém chaves Supabase nem segredos;

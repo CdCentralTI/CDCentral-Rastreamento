@@ -103,6 +103,13 @@ test("serve pagina principal e bloqueia arquivo fora da lista publica", async ()
   assert.equal(hiddenFile.statusCode, 404);
 });
 
+test("health publico expoe somente status", async () => {
+  const response = await request({ path: "/health" });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), { status: "ok" });
+});
+
 test("entrega configuracao publica sem habilitar Turnstile incompleto", async () => {
   const response = await request({ path: "/api/public-config" });
   assert.equal(response.statusCode, 200);

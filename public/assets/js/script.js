@@ -24,6 +24,7 @@ let activeConsentVersion = String(consentVersionInput?.value || "").trim();
 let turnstileWidgetId = null;
 let turnstileReady = false;
 let turnstileRequired = Boolean(turnstileNode);
+let turnstileUnavailable = false;
 let publicConfigPromise = null;
 
 const fieldNodes = {
@@ -306,6 +307,7 @@ const renderTurnstile = async () => {
 
   try {
     const config = await loadPublicConfig();
+    turnstileUnavailable = false;
     turnstileRequired = Boolean(config.turnstileEnabled && config.turnstileSiteKey);
 
     if (!turnstileRequired) {
@@ -337,6 +339,7 @@ const renderTurnstile = async () => {
     });
   } catch (error) {
     turnstileReady = false;
+    turnstileUnavailable = true;
     setFeedback("Não foi possível carregar a verificação de segurança. Atualize a página e tente novamente.", "error");
   }
 };
@@ -388,6 +391,10 @@ const handleLeadSubmit = async (event) => {
   }
 
   await renderTurnstile();
+
+  if (turnstileUnavailable) {
+    return;
+  }
 
   if (turnstileRequired && (!turnstileReady || !payload["cf-turnstile-response"])) {
     setFeedback("Confirme a verificação de segurança para continuar.", "error");
