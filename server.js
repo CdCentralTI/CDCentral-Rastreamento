@@ -247,15 +247,15 @@ const assertProductionSecurityConfig = () => {
   }
 
   const errors = [];
-  const turnstileDisabled = String(process.env.REQUIRE_TURNSTILE || "").trim() === "0";
+  const requireTurnstile = String(process.env.REQUIRE_TURNSTILE || "").trim();
 
-  if (turnstileDisabled) {
-    errors.push("REQUIRE_TURNSTILE must not be 0 in production");
-  } else {
-    const missingTurnstile = getRequiredEnvMissing(["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"]);
-    if (missingTurnstile.length > 0) {
-      errors.push(`${missingTurnstile.join(", ")} missing`);
-    }
+  if (requireTurnstile !== "1") {
+    errors.push("REQUIRE_TURNSTILE must be 1 in production");
+  }
+
+  const missingTurnstile = getRequiredEnvMissing(["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"]);
+  if (missingTurnstile.length > 0) {
+    errors.push(`${missingTurnstile.join(", ")} missing`);
   }
 
   if (String(process.env.REQUIRE_EXTERNAL_RATE_LIMIT || "").trim() === "0") {

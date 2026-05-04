@@ -2,6 +2,7 @@
 
 process.env.NODE_ENV = "production";
 process.env.SITE_URL = "https://cdcentralrastreamento.com.br";
+process.env.REQUIRE_TURNSTILE = "1";
 process.env.TURNSTILE_SITE_KEY = "site-key-test";
 process.env.TURNSTILE_SECRET_KEY = "secret-key-test";
 process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
@@ -9,7 +10,6 @@ process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_test_key";
 delete process.env.ENABLE_CANONICAL_REDIRECT;
-delete process.env.REQUIRE_TURNSTILE;
 delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;
 delete process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION;
 

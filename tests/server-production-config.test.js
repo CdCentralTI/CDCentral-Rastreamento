@@ -29,6 +29,26 @@ test("server falha boot em producao sem Turnstile e Upstash", () => {
   );
 });
 
+test("server exige REQUIRE_TURNSTILE=1 explicitamente em producao", () => {
+  process.env.TURNSTILE_SITE_KEY = "site-key-test";
+  process.env.TURNSTILE_SECRET_KEY = "secret-key-test";
+  process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
+  delete process.env.REQUIRE_TURNSTILE;
+
+  try {
+    assert.throws(
+      () => createAppServer(),
+      (error) =>
+        error instanceof Error &&
+        /Production security config invalid/.test(error.message) &&
+        /REQUIRE_TURNSTILE must be 1 in production/.test(error.message)
+    );
+  } finally {
+    process.env.REQUIRE_TURNSTILE = "1";
+  }
+});
+
 test("server rejeita desligar rate limit externo em producao", () => {
   process.env.TURNSTILE_SITE_KEY = "site-key-test";
   process.env.TURNSTILE_SECRET_KEY = "secret-key-test";
