@@ -105,7 +105,7 @@ O site foi pensado para:
   Endpoint responsável por validar requisições, aplicar CORS, limitar tentativas e persistir o lead.
 
 - [lib/http-utils.js](./lib/http-utils.js)
-  Utilitários de parsing JSON, erro HTTP controlado e rate limit com Redis/KV quando configurado. Em desenvolvimento usa fallback em memória; em produção, `/api/leads` exige Redis/KV por padrão, salvo opt-out explícito.
+Utilitários de parsing JSON, erro HTTP controlado e rate limit com Redis/KV quando configurado. Em desenvolvimento usa fallback em memória; em produção, `/api/leads` exige Upstash Redis e falha fechado sem ele.
 
 - [lib/app-config.js](./lib/app-config.js)
   Configuração compartilhada do backend, incluindo a versão vigente de consentimento usada por `/api/public-config` e `/api/leads`.
@@ -223,8 +223,8 @@ O endpoint possui proteções simples contra abuso:
 - exigência de `Origin` válido em produção;
 - rate limit por IP com chave `rl:ip:<ip>` de 5 requisições a cada 10 minutos;
 - rate limit por WhatsApp com chave `rl:wpp:<digits>` de 3 requisições a cada 24 horas;
-- Redis/KV exigido por padrão em produção para rate limit distribuído; fallback em memória fica restrito ao desenvolvimento ou a opt-out explícito;
-- validação server-side do Cloudflare Turnstile quando as chaves estão configuradas ou `REQUIRE_TURNSTILE=1`;
+- Upstash Redis exigido em produção para rate limit distribuído; fallback em memória fica restrito ao desenvolvimento;
+- validação server-side do Cloudflare Turnstile, obrigatória em produção com `REQUIRE_TURNSTILE=1`;
 - consentimento LGPD obrigatório e persistido com data, versão e IP;
 - campo honeypot `empresa`;
 - verificação de tempo mínimo de preenchimento via `startedAt`.
@@ -272,9 +272,9 @@ CONSENT_VERSION=2026-04-28
 SITE_URL=https://cdcentralrastreamento.com.br
 ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
 ENABLE_CANONICAL_REDIRECT=0
+CSP_REPORT_URL=https://cd-central.vercel.app/api/csp-report
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
-ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
 REQUIRE_TURNSTILE=1
 TURNSTILE_SITE_KEY=your_public_turnstile_site_key
@@ -283,6 +283,7 @@ UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 REQUIRE_EXTERNAL_RATE_LIMIT=1
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
+CRON_SECRET=your_random_cron_secret
 ```
 
 ### Descrição das variáveis
@@ -292,10 +293,7 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `SUPABASE_LEADS_INSERT_KEY`
   Chave server-side usada pela API para inserir leads. Prefira uma chave restrita para inserção. Não use chave publishable/anon aqui e não exponha essa variável no frontend.
-  Com o schema padrão deste projeto, use service_role/secret key somente no backend; anon/publishable key é recusada pela API. `SUPABASE_SERVICE_ROLE_KEY` nao e mais aceito como fallback implicito.
-
-- `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK`
-  Use `1` apenas quando a plataforma injeta obrigatoriamente `SUPABASE_SERVICE_ROLE_KEY` e voce quer habilitar esse fallback de forma explicita. O padrao seguro e `0`.
+  Com o schema padrao deste projeto, use uma secret/service-role key somente no backend; anon/publishable key e recusada pela API. `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback.
 
 - `SUPABASE_LEADS_TABLE`
   Nome da tabela onde os leads serão salvos.
@@ -308,6 +306,9 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 - `ENABLE_CANONICAL_REDIRECT`
   Use `1` somente depois que o domínio em `SITE_URL` estiver resolvendo publicamente. Quando desligado, hosts auxiliares não são redirecionados para evitar indisponibilidade por DNS incompleto.
+
+- `CSP_REPORT_URL`
+  Endpoint HTTPS absoluto para relatorios CSP. Use um dominio que resolva publicamente; enquanto `cdcentralrastreamento.com.br` nao resolver, aponte para o dominio de producao da Vercel.
 
 - `NODE_ENV`
   Use `production` em Hostinger/VPS e `development` localmente.
@@ -341,13 +342,16 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
   Obrigatorias em staging/producao para rate limit distribuido.
 
 - `REQUIRE_EXTERNAL_RATE_LIMIT`
-  Use `1` para explicitar que Redis/KV é obrigatório em produção. Em runtime publicado, esse é o comportamento padrão. Use `0` somente se aceitar fallback em memória.
+  Use `1` para explicitar que Upstash Redis é obrigatório. Em produção, `0` é rejeitado e a aplicação falha fechada.
 
 - `CONSENT_VERSION`
   Versão vigente do consentimento LGPD entregue por `/api/public-config` e validada por `/api/leads`.
 
 - `ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION`
-  Mantenha `0`. Use `1` somente se aceitar fallback em memória em um único processo Node, sem rate limit distribuído.
+  Mantenha `0`. Em produção, `1` é rejeitado; fallback em memória fica restrito ao desenvolvimento.
+
+- `CRON_SECRET`
+  Segredo usado pela Vercel Cron em `Authorization: Bearer ...` para executar `/api/purge-leads`, que remove leads com mais de 24 meses.
 
 ## Como rodar localmente
 
@@ -432,7 +436,7 @@ Pontos importantes na publicação:
 - manter `ENABLE_CANONICAL_REDIRECT=0` até o domínio final resolver em DNS e só então ativar o redirect canônico;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
-- manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção ou habilitar `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1` de forma explicita;
+- manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção; `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback;
 - configurar `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`; com `REQUIRE_TURNSTILE=1`, a falta de qualquer chave derruba `/api/public-config` e `/api/leads` de forma fechada;
 - configurar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` em staging/producao;
 - aplicar [database/supabase/leads-schema.sql](./database/supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados;
@@ -440,7 +444,7 @@ Pontos importantes na publicação:
 
 ### Estratégia Supabase/RLS
 
-O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile quando configurado e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY`. O nome `SUPABASE_SERVICE_ROLE_KEY` só é aceito como fallback quando `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1`.
+O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile obrigatório em produção e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY`. O nome `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback.
 
 ## Testes manuais de segurança
 

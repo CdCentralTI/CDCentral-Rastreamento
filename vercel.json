@@ -17,6 +17,12 @@
       "destination": "/assets/:path*"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/purge-leads",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

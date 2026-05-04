@@ -64,3 +64,22 @@ test("server rejeita desligar rate limit externo em producao", () => {
       /REQUIRE_EXTERNAL_RATE_LIMIT must not be 0 in production/.test(error.message)
   );
 });
+
+test("server rejeita SUPABASE_SERVICE_ROLE_KEY como fallback em producao", () => {
+  process.env.TURNSTILE_SITE_KEY = "site-key-test";
+  process.env.TURNSTILE_SECRET_KEY = "secret-key-test";
+  process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
+  process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "1";
+  delete process.env.SUPABASE_LEADS_INSERT_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "sb_secret_service_role_test_key";
+
+  assert.throws(
+    () => createAppServer(),
+    (error) =>
+      error instanceof Error &&
+      /Production security config invalid/.test(error.message) &&
+      /SUPABASE_LEADS_INSERT_KEY/.test(error.message) &&
+      /SUPABASE_SERVICE_ROLE_KEY is not accepted/.test(error.message)
+  );
+});

@@ -118,3 +118,56 @@ comment on table public.leads is
 -- Se voce decidir usar anon/publishable key, NAO exponha a tabela diretamente sem
 -- outra protecao server-side: crie uma funcao/edge function segura ou uma policy
 -- extremamente restrita e aceite que ela podera ser chamada fora do site.
+
+do $$
+declare
+  leads_rls_enabled boolean;
+  anon_authenticated_grants integer;
+  anon_authenticated_policies integer;
+  sequence_usage_open boolean;
+begin
+  select c.relrowsecurity
+    into leads_rls_enabled
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relname = 'leads';
+
+  if coalesce(leads_rls_enabled, false) is not true then
+    raise exception 'public.leads must have RLS enabled';
+  end if;
+
+  select count(*)
+    into anon_authenticated_grants
+    from information_schema.role_table_grants
+   where table_schema = 'public'
+     and table_name = 'leads'
+     and grantee in ('anon', 'authenticated');
+
+  if anon_authenticated_grants > 0 then
+    raise exception 'public.leads must not grant privileges to anon/authenticated';
+  end if;
+
+  select count(*)
+    into anon_authenticated_policies
+    from pg_policies
+   where schemaname = 'public'
+     and tablename = 'leads'
+     and (
+       'anon' = any(roles)
+       or 'authenticated' = any(roles)
+       or 'public' = any(roles)
+     );
+
+  if anon_authenticated_policies > 0 then
+    raise exception 'public.leads must not expose RLS policies to anon/authenticated/public';
+  end if;
+
+  select has_sequence_privilege('anon', 'public.leads_id_seq', 'USAGE')
+      or has_sequence_privilege('authenticated', 'public.leads_id_seq', 'USAGE')
+    into sequence_usage_open;
+
+  if sequence_usage_open then
+    raise exception 'public.leads_id_seq must not grant USAGE to anon/authenticated';
+  end if;
+end $$;

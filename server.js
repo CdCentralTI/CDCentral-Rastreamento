@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const http = require("http");
 const path = require("path");
 const { anonymizeIp, getClientIp } = require("./lib/http-utils");
+const { assertProductionSecurityConfig } = require("./lib/production-security");
 
 const workspaceRoot = path.resolve(__dirname);
 const publicRoot = path.join(workspaceRoot, "public");
@@ -50,12 +51,14 @@ if (!IS_PRODUCTION) {
 const leadHandler = require("./api/leads");
 const publicConfigHandler = require("./api/public-config");
 const cspReportHandler = require("./api/csp-report");
+const purgeLeadsHandler = require("./api/purge-leads");
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel processar sua solicitacao agora.";
 const SHUTDOWN_TIMEOUT_MS = 10000;
 const DEFAULT_SITE_URL = "https://cdcentralrastreamento.com.br";
+const DEFAULT_CSP_REPORT_PATH = "/api/csp-report";
 const ENABLE_CANONICAL_REDIRECT = process.env.ENABLE_CANONICAL_REDIRECT === "1";
 
 const PUBLIC_FILES = new Set([
@@ -100,6 +103,7 @@ const API_HANDLERS = new Map([
   ["/api/leads", leadHandler],
   ["/api/public-config", publicConfigHandler],
   ["/api/csp-report", cspReportHandler],
+  ["/api/purge-leads", purgeLeadsHandler],
 ]);
 
 const getRequestClientIp = (req) => getClientIp(req, { trustProxyHeaders: process.env.TRUST_PROXY_HEADERS === "1" });
@@ -171,7 +175,29 @@ const getRequestHost = (req) => {
     .toLowerCase();
 };
 
-const getCsp = ({ reportOnly = false } = {}) => {
+const getRequestOrigin = (req) => {
+  const host = getRequestHost(req) || getCanonicalHost();
+  const protocol = IS_PRODUCTION && !isLocalRequestHost(host) ? "https:" : "http:";
+  return `${protocol}//${host}`;
+};
+
+const getConfiguredCspReportUrl = () => {
+  const configuredReportUrl = String(process.env.CSP_REPORT_URL || "").trim();
+  if (!configuredReportUrl) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(configuredReportUrl);
+    return ["http:", "https:"].includes(parsedUrl.protocol) ? parsedUrl.toString() : "";
+  } catch (error) {
+    return "";
+  }
+};
+
+const getCspReportUrl = (req) => getConfiguredCspReportUrl() || new URL(DEFAULT_CSP_REPORT_PATH, getRequestOrigin(req)).toString();
+
+const getCsp = (req, { reportOnly = false } = {}) => {
   const jsonLdHashDirective = getJsonLdHashDirective();
   const scriptSrc = ["script-src 'self'", "https://challenges.cloudflare.com", jsonLdHashDirective]
     .filter(Boolean)
@@ -200,13 +226,14 @@ const getCsp = ({ reportOnly = false } = {}) => {
   }
 
   if (reportOnly) {
-    directives.push("report-uri /api/csp-report", "report-to default");
+    directives.push(`report-uri ${getCspReportUrl(req)}`, "report-to default");
   }
 
   return directives.join("; ");
 };
 
 const getSecurityHeaders = (req) => {
+  const cspReportUrl = getCspReportUrl(req);
   const headers = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -216,13 +243,13 @@ const getSecurityHeaders = (req) => {
     "Cross-Origin-Opener-Policy": "same-origin",
     "Cross-Origin-Embedder-Policy": "require-corp",
     "X-Permitted-Cross-Domain-Policies": "none",
-    "Content-Security-Policy": getCsp(),
-    "Content-Security-Policy-Report-Only": getCsp({ reportOnly: true }),
-    "Reporting-Endpoints": 'default="/api/csp-report"',
+    "Content-Security-Policy": getCsp(req),
+    "Content-Security-Policy-Report-Only": getCsp(req, { reportOnly: true }),
+    "Reporting-Endpoints": `default="${cspReportUrl}"`,
     "Report-To": JSON.stringify({
       group: "default",
       max_age: 10886400,
-      endpoints: [{ url: "/api/csp-report" }],
+      endpoints: [{ url: cspReportUrl }],
       include_subdomains: false,
     }),
   };
@@ -237,48 +264,6 @@ const getSecurityHeaders = (req) => {
   }
 
   return headers;
-};
-
-const getRequiredEnvMissing = (names) => names.filter((name) => !String(process.env[name] || "").trim());
-
-const assertProductionSecurityConfig = () => {
-  if (!IS_PRODUCTION) {
-    return;
-  }
-
-  const errors = [];
-  const requireTurnstile = String(process.env.REQUIRE_TURNSTILE || "").trim();
-
-  if (requireTurnstile !== "1") {
-    errors.push("REQUIRE_TURNSTILE must be 1 in production");
-  }
-
-  const missingTurnstile = getRequiredEnvMissing(["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"]);
-  if (missingTurnstile.length > 0) {
-    errors.push(`${missingTurnstile.join(", ")} missing`);
-  }
-
-  if (String(process.env.REQUIRE_EXTERNAL_RATE_LIMIT || "").trim() === "0") {
-    errors.push("REQUIRE_EXTERNAL_RATE_LIMIT must not be 0 in production");
-  }
-
-  const missingUpstash = getRequiredEnvMissing(["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"]);
-  if (missingUpstash.length > 0) {
-    errors.push(`${missingUpstash.join(", ")} missing`);
-  }
-
-  const missingSupabase = getRequiredEnvMissing(["SUPABASE_URL", "SUPABASE_LEADS_INSERT_KEY"]);
-  if (missingSupabase.length > 0) {
-    errors.push(`${missingSupabase.join(", ")} missing`);
-  }
-
-  if (String(process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION || "").trim() === "1") {
-    errors.push("ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION must not be 1 in production");
-  }
-
-  if (errors.length > 0) {
-    throw new Error(`Production security config invalid: ${errors.join("; ")}`);
-  }
 };
 
 const toPosixPath = (value) => String(value || "").replace(/\\/g, "/");

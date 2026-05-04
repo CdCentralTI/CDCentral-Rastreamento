@@ -129,20 +129,15 @@ if (supabaseUrl && !supabaseUrl.hostname.endsWith(".supabase.co")) {
 
 const supabaseInsertKey = String(process.env.SUPABASE_LEADS_INSERT_KEY || "").trim();
 const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-const allowSupabaseServiceRoleFallback = process.env.ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK === "1";
 
 if (supabaseInsertKey) {
   validateSupabaseServerKey("SUPABASE_LEADS_INSERT_KEY", supabaseInsertKey);
-} else if (supabaseServiceRoleKey && allowSupabaseServiceRoleFallback) {
-  validateSupabaseServerKey("SUPABASE_SERVICE_ROLE_KEY", supabaseServiceRoleKey);
-  addWarn("supabase key", "SUPABASE_SERVICE_ROLE_KEY fallback is enabled by explicit opt-in");
-} else if (supabaseServiceRoleKey) {
-  addError(
-    "supabase key",
-    "SUPABASE_LEADS_INSERT_KEY is missing; SUPABASE_SERVICE_ROLE_KEY fallback requires ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1"
-  );
 } else {
   addError("supabase key", "SUPABASE_LEADS_INSERT_KEY is missing");
+}
+
+if (supabaseServiceRoleKey) {
+  addWarn("supabase key", "SUPABASE_SERVICE_ROLE_KEY is ignored; configure only SUPABASE_LEADS_INSERT_KEY");
 }
 
 const table = String(process.env.SUPABASE_LEADS_TABLE || "leads").trim();
@@ -202,6 +197,11 @@ if (isPublishedTarget) {
   } else {
     addOk("origin guard", "request Origin guard is enabled by runtime defaults");
   }
+}
+
+if (isProductionTarget) {
+  requireVariable("CRON_SECRET", "cron");
+  requireUrl("CSP_REPORT_URL", "csp reporting");
 }
 
 if (!/^\d{4}-\d{2}-\d{2}$/.test(String(process.env.CONSENT_VERSION || "2026-04-28"))) {

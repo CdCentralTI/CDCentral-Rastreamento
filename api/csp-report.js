@@ -13,7 +13,7 @@ const isCspReportRateLimited = createRateLimiter({
   maxRequests: CSP_REPORT_RATE_LIMIT_MAX_REQUESTS,
   keyPrefix: "rl:csp:",
   maxKeys: 1000,
-  requireExternalInProduction: false,
+  requireExternalInProduction: true,
 });
 
 const getClientIp = (req) => getRequestClientIp(req, { trustProxyHeaders: TRUST_PROXY_HEADERS });

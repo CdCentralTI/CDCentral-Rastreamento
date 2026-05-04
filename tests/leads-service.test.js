@@ -2,7 +2,13 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { LeadStorageError, normalizeLead, saveLeadToSupabase, validateLead } = require("../lib/leads-service");
+const {
+  LeadStorageError,
+  normalizeLead,
+  purgeOldLeadsFromSupabase,
+  saveLeadToSupabase,
+  validateLead,
+} = require("../lib/leads-service");
 
 const originalEnv = { ...process.env };
 
@@ -72,7 +78,6 @@ test("bloqueia fallback implicito para SUPABASE_SERVICE_ROLE_KEY", async () => {
   process.env.SUPABASE_URL = "https://example.supabase.co";
   delete process.env.SUPABASE_LEADS_INSERT_KEY;
   process.env.SUPABASE_SERVICE_ROLE_KEY = "sb_secret_service_role_test_key";
-  delete process.env.ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK;
   process.env.SUPABASE_LEADS_TABLE = "leads";
 
   await assert.rejects(
@@ -85,12 +90,12 @@ test("bloqueia fallback implicito para SUPABASE_SERVICE_ROLE_KEY", async () => {
         consent_at: new Date().toISOString(),
         consent_version: "2026-04-28",
         consent_ip: "127.0.0.1",
-      }),
-    (error) => error instanceof LeadStorageError && error.code === "supabase_service_role_fallback_disabled"
+    }),
+    (error) => error instanceof LeadStorageError && error.code === "missing_supabase_leads_insert_key"
   );
 });
 
-test("bloqueia fallback para SUPABASE_SERVICE_ROLE_KEY em producao mesmo com opt-in", async () => {
+test("bloqueia fallback para SUPABASE_SERVICE_ROLE_KEY mesmo com opt-in legado", async () => {
   process.env.NODE_ENV = "production";
   process.env.SUPABASE_URL = "https://example.supabase.co";
   delete process.env.SUPABASE_LEADS_INSERT_KEY;
@@ -111,4 +116,35 @@ test("bloqueia fallback para SUPABASE_SERVICE_ROLE_KEY em producao mesmo com opt
       }),
     (error) => error instanceof LeadStorageError && error.code === "missing_supabase_leads_insert_key"
   );
+});
+
+test("expurgo LGPD remove somente leads com mais de 24 meses", async () => {
+  const originalFetch = global.fetch;
+  const fetchCalls = [];
+
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_service_role_test_key";
+  process.env.SUPABASE_LEADS_TABLE = "leads";
+
+  try {
+    global.fetch = async (url, options) => {
+      fetchCalls.push({ url: String(url), options });
+      return {
+        ok: true,
+        status: 204,
+        statusText: "No Content",
+        text: async () => "",
+      };
+    };
+
+    const result = await purgeOldLeadsFromSupabase();
+
+    assert.equal(result.retentionMonths, 24);
+    assert.equal(fetchCalls.length, 1);
+    assert.equal(fetchCalls[0].options.method, "DELETE");
+    assert.match(fetchCalls[0].url, /^https:\/\/example\.supabase\.co\/rest\/v1\/leads\?created_at=lt\./);
+    assert.equal(fetchCalls[0].options.headers.Prefer, "return=minimal");
+  } finally {
+    global.fetch = originalFetch;
+  }
 });

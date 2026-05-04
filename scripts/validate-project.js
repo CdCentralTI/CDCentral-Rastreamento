@@ -18,6 +18,7 @@ const jsFiles = [
   "server.js",
   "api/csp-report.js",
   "api/leads.js",
+  "api/purge-leads.js",
   "api/public-config.js",
   "lib/app-config.js",
   "lib/http-utils.js",
@@ -274,6 +275,13 @@ if (fs.existsSync(vercelConfigPath)) {
 
   if ((vercelConfig.redirects || []).length > 0) {
     errors.push("vercel.json: redirects canonicos devem ficar no handler Node para preservar headers");
+  }
+
+  const purgeCron = (vercelConfig.crons || []).find((cron) => cron.path === "/api/purge-leads");
+  if (!purgeCron) {
+    errors.push("vercel.json: rotina de expurgo LGPD deve chamar /api/purge-leads");
+  } else if (purgeCron.schedule !== "0 3 * * *") {
+    errors.push("vercel.json: rotina de expurgo LGPD deve rodar diariamente as 03:00 UTC");
   }
 
   const forbiddenVercelHeaderKeys = new Set(["Content-Security-Policy", "Content-Security-Policy-Report-Only", "Report-To"]);

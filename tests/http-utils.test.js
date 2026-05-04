@@ -117,3 +117,28 @@ test("rate limiter falha fechado em producao sem Upstash", async () => {
     process.env = previousEnv;
   }
 });
+
+test("rate limiter nao aceita fallback em memoria em producao", async () => {
+  const previousEnv = { ...process.env };
+
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION = "1";
+    delete process.env.VERCEL;
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    const limiter = createRateLimiter({
+      windowMs: 1000,
+      maxRequests: 1,
+      requireExternalInProduction: true,
+    });
+
+    await assert.rejects(
+      () => limiter("203.0.113.10"),
+      (error) => error instanceof HttpError && error.code === "missing_rate_limiter_config"
+    );
+  } finally {
+    process.env = previousEnv;
+  }
+});

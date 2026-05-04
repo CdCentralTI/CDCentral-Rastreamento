@@ -2,6 +2,7 @@
 
 const { getConsentVersion } = require("../lib/app-config");
 const { LeadStorageError, normalizeLead, validateLead, saveLeadToSupabase } = require("../lib/leads-service");
+const { getProductionSecurityConfigErrors } = require("../lib/production-security");
 const { getTurnstileConfig, isTurnstileFailClosed } = require("../lib/turnstile-config");
 const {
   HttpError,
@@ -190,6 +191,15 @@ const assertTurnstileRuntimeConfig = () => {
   }
 };
 
+const assertProductionRuntimeConfig = () => {
+  const errors = getProductionSecurityConfigErrors();
+  if (errors.length > 0) {
+    const error = new HttpError(503, GENERIC_ERROR_MESSAGE, "production_security_config_invalid");
+    error.details = errors.join("; ");
+    throw error;
+  }
+};
+
 const getTurnstileToken = (body) => String(body["cf-turnstile-response"] || "").trim();
 
 const validateTurnstileToken = async (token, remoteIp) => {
@@ -289,6 +299,7 @@ module.exports = async (req, res) => {
 
   try {
     assertTurnstileRuntimeConfig();
+    assertProductionRuntimeConfig();
 
     if (await isLeadRateLimited(clientIp)) {
       sendJson(req, res, 429, {

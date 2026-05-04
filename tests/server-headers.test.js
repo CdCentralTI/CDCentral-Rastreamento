@@ -84,27 +84,30 @@ test("serve headers de seguranca fortes no host canonico em producao", async () 
   assert.equal(response.statusCode, 200);
   assert.match(response.headers["permissions-policy"], /payment=\(\)/);
   assert.match(response.headers["permissions-policy"], /interest-cohort=\(\)/);
-  assert.equal(response.headers["reporting-endpoints"], 'default="/api/csp-report"');
-  assert.equal(JSON.parse(response.headers["report-to"]).endpoints[0].url, "/api/csp-report");
+  assert.equal(response.headers["reporting-endpoints"], 'default="https://cdcentralrastreamento.com.br/api/csp-report"');
+  assert.equal(JSON.parse(response.headers["report-to"]).endpoints[0].url, "https://cdcentralrastreamento.com.br/api/csp-report");
   assert.equal(response.headers["cross-origin-embedder-policy"], "require-corp");
   assert.equal(response.headers["strict-transport-security"], "max-age=63072000; includeSubDomains; preload");
 });
 
-test("getSecurityHeaders usa endpoints de relatorio relativos", () => {
+test("getSecurityHeaders usa endpoint absoluto de relatorio CSP", () => {
   const headers = getSecurityHeaders({
     headers: {
       host: "cdcentralrastreamento.com.br",
     },
   });
 
-  assert.equal(headers["Reporting-Endpoints"], 'default="/api/csp-report"');
+  assert.equal(headers["Reporting-Endpoints"], 'default="https://cdcentralrastreamento.com.br/api/csp-report"');
   assert.deepEqual(JSON.parse(headers["Report-To"]), {
     group: "default",
     max_age: 10886400,
-    endpoints: [{ url: "/api/csp-report" }],
+    endpoints: [{ url: "https://cdcentralrastreamento.com.br/api/csp-report" }],
     include_subdomains: false,
   });
-  assert.match(headers["Content-Security-Policy-Report-Only"], /report-uri \/api\/csp-report/);
+  assert.match(
+    headers["Content-Security-Policy-Report-Only"],
+    /report-uri https:\/\/cdcentralrastreamento\.com\.br\/api\/csp-report/
+  );
 });
 
 test("pagina legal HTML servida pelo Node recebe X-Frame-Options DENY", async () => {
