@@ -4,8 +4,10 @@ Este projeto roda como uma aplicacao Node.js permanente: o mesmo processo serve 
 
 Referencias uteis da Hostinger:
 
-- Node.js Web App no hPanel: https://www.hostinger.com/support/how-to-add-a-front-end-website-in-hostinger/
+- Node.js Web App no hPanel: https://www.hostinger.com/support/how-to-deploy-a-nodejs-website-in-hostinger/
 - Variaveis de ambiente: https://www.hostinger.com/support/how-to-add-environment-variables-during-node-js-application-deployment/
+- Editar variaveis depois do deploy: https://www.hostinger.com/support/how-to-edit-or-add-environment-variables-after-deployment/
+- Cron Jobs no hPanel: https://www.hostinger.com/support/1583465-how-to-set-up-a-cron-job-at-hostinger
 
 ## Plano necessario
 
@@ -100,27 +102,21 @@ SITE_URL=https://cdcentralrastreamento.com.br
 ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
-ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
-REQUIRE_TURNSTILE=0
-TURNSTILE_SITE_KEY=your_public_turnstile_site_key
-TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
-UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 REQUIRE_EXTERNAL_RATE_LIMIT=0
-ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
+CRON_SECRET=your_random_url_safe_secret
 ```
 
 `CONSENT_VERSION` representa a fonte operacional da versao de consentimento enviada por `/api/public-config` e validada em `/api/leads`. Ao atualizar a Politica de Privacidade, altere essa variavel no hPanel e reinicie/republique a aplicacao.
 
-Nunca coloque `SUPABASE_LEADS_INSERT_KEY`, `TURNSTILE_SECRET_KEY` ou `UPSTASH_REDIS_REST_TOKEN` no HTML, CSS ou JavaScript publico.
+Nunca coloque `SUPABASE_LEADS_INSERT_KEY`, `CRON_SECRET` ou `UPSTASH_REDIS_REST_TOKEN` no HTML, CSS ou JavaScript publico.
 
 ### Supabase
 
 O schema padrao deixa `public.leads` fechada para `anon` e `authenticated`. A estrategia aplicada e:
 
 - o navegador envia leads somente para `/api/leads`;
-- a API valida origem, rate limit, payload e consentimento; Turnstile e opcional;
+- a API valida origem, rate limit, payload e consentimento;
 - a API grava no Supabase usando `SUPABASE_LEADS_INSERT_KEY` somente no backend;
 - use uma chave server-side, preferencialmente `service_role` ou secret key, nunca anon/publishable key.
 
@@ -132,7 +128,29 @@ Se voce preferir usar anon/publishable key, sera necessario redesenhar as permis
 
 `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` sao recomendados em producao para rate limit distribuido. Sem Redis e com `REQUIRE_EXTERNAL_RATE_LIMIT=0`, a API usa fallback em memoria.
 
-`ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION` fica apenas por compatibilidade. Para Hostinger e producao normal, mantenha `0`.
+`ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION` fica apenas por compatibilidade. Se essa variavel existir no ambiente, mantenha `0`.
+
+Se for usar Upstash, cadastre tambem:
+
+```env
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+REQUIRE_EXTERNAL_RATE_LIMIT=1
+```
+
+Nao cadastre `UPSTASH_REDIS_REST_URL` ou `UPSTASH_REDIS_REST_TOKEN` com valores placeholder. Se nao tiver Upstash ainda, deixe essas duas variaveis ausentes e mantenha `REQUIRE_EXTERNAL_RATE_LIMIT=0`.
+
+### Expurgo LGPD via Cron Job
+
+Na Vercel, `vercel.json` agenda `/api/purge-leads`. Na Hostinger, essa agenda nao roda automaticamente. Crie um Cron Job diario no hPanel para chamar o endpoint com o mesmo `CRON_SECRET`.
+
+Use uma string URL-safe para `CRON_SECRET` para evitar problemas de escape no shell. Exemplo de comando do cron:
+
+```bash
+curl -fsS -H "Authorization: Bearer your_random_url_safe_secret" https://cdcentralrastreamento.com.br/api/purge-leads
+```
+
+Sem o header `Authorization`, `/api/purge-leads` deve responder `401`.
 
 Se alterar variaveis depois do deploy, faca redeploy ou restart pelo painel para o processo Node.js carregar os novos valores.
 
@@ -142,7 +160,6 @@ Se alterar variaveis depois do deploy, faca redeploy ou restart pelo painel para
 2. Ative SSL no hPanel.
 3. Aguarde o certificado ficar ativo.
 4. Confirme que `SITE_URL` e `ALLOWED_ORIGINS` usam `https://`.
-5. Se usar Cloudflare Turnstile, autorize o dominio real.
 
 ## Testes apos deploy
 
@@ -164,7 +181,7 @@ Config publica:
 curl -i https://cdcentralrastreamento.com.br/api/public-config
 ```
 
-Deve responder JSON com `consentVersion`. Se Turnstile estiver desabilitado, `turnstileEnabled` deve ser `false`.
+Deve responder JSON com `consentVersion`.
 
 Site:
 
@@ -193,20 +210,15 @@ Envio de lead:
 1. Abra `https://cdcentralrastreamento.com.br/`.
 2. Preencha o formulario.
 3. Marque o consentimento.
-4. Se Turnstile estiver habilitado, resolva a verificacao.
-5. Envie e confira se o lead aparece no Supabase.
+4. Envie e confira se o lead aparece no Supabase.
 
-Teste direto com Turnstile invalido, apenas se `REQUIRE_TURNSTILE=1`:
+Expurgo sem autorizacao:
 
 ```bash
-STARTED_AT=$(node -e 'console.log(Date.now() - 2000)')
-curl -i https://cdcentralrastreamento.com.br/api/leads \
-  -H "Origin: https://cdcentralrastreamento.com.br" \
-  -H "Content-Type: application/json" \
-  --data "{\"nome\":\"Teste Seguro\",\"whatsapp\":\"98987577275\",\"tipo\":\"Pessoa fisica\",\"veiculos\":\"1\",\"empresa\":\"\",\"startedAt\":\"$STARTED_AT\",\"consent\":true,\"consentVersion\":\"2026-04-28\",\"cf-turnstile-response\":\"invalid\"}"
+curl -i https://cdcentralrastreamento.com.br/api/purge-leads
 ```
 
-Resposta esperada: `400`.
+Resposta esperada: `401`.
 
 ## Troubleshooting
 
@@ -226,7 +238,7 @@ Erro 500:
 - Verifique logs do deploy/runtime no hPanel.
 - Confirme todas as variaveis de ambiente.
 - Teste `/health` e `/api/public-config`.
-- Se `/api/leads` falhar, valide Supabase, Turnstile e Upstash.
+- Se `/api/leads` falhar, valide Supabase e Upstash.
 - Se o erro for logo apos o deploy e voce tiver `REQUIRE_EXTERNAL_RATE_LIMIT=1`, confirme se Upstash esta configurado.
 
 Problema com porta:
