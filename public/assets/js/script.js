@@ -233,6 +233,22 @@ const getSubmitErrorMessage = (response) => {
   return GENERIC_SUBMIT_ERROR;
 };
 
+const logLeadSubmitError = ({ response, result, error }) => {
+  if (!window.console || typeof window.console.error !== "function") {
+    return;
+  }
+
+  window.console.error("[lead-form] Falha ao enviar lead", {
+    endpoint: "/api/leads",
+    status: response?.status || null,
+    statusText: response?.statusText || "",
+    serverMessage: result?.message || "",
+    serverFields: Array.isArray(result?.fields) ? result.fields : [],
+    errorName: error?.name || "",
+    errorMessage: error?.message || "",
+  });
+};
+
 const fetchWithTimeout = async (url, options) => {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS);
@@ -351,6 +367,8 @@ const handleLeadSubmit = async (event) => {
     if (!response.ok) {
       applyServerFieldErrors(result.fields);
       const submitError = new Error(getSubmitErrorMessage(response));
+      logLeadSubmitError({ response, result, error: submitError });
+      submitError.wasLogged = true;
       throw submitError;
     }
 
@@ -365,6 +383,9 @@ const handleLeadSubmit = async (event) => {
     resetStartedAt();
   } catch (error) {
     const isAbortError = error && error.name === "AbortError";
+    if (!error?.wasLogged) {
+      logLeadSubmitError({ error });
+    }
     setFeedback(
       isAbortError ? "O envio demorou mais que o esperado. Verifique sua conexão e tente novamente." : error.message || GENERIC_SUBMIT_ERROR,
       "error"
