@@ -57,7 +57,7 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel processar sua solicitacao agora.";
 const SHUTDOWN_TIMEOUT_MS = 10000;
-const DEFAULT_SITE_URL = "https://cdcentralrastreamento.com.br";
+const DEFAULT_SITE_URL = "https://cdcentral.com.br";
 const DEFAULT_CSP_REPORT_PATH = "/api/csp-report";
 const ENABLE_CANONICAL_REDIRECT = process.env.ENABLE_CANONICAL_REDIRECT === "1";
 

@@ -6,7 +6,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const publicRoot = path.join(root, "public");
 const vercelConfigPath = path.join(root, "vercel.json");
-const canonicalSiteUrl = "https://cdcentralrastreamento.com.br";
+const canonicalSiteUrl = "https://cdcentral.com.br";
 const legacyPreviewUrl = "https://cd-central.vercel.app";
 
 const rootFiles = [

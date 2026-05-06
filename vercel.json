@@ -127,7 +127,7 @@
       "has": [
         {
           "type": "host",
-          "value": "^(?!cdcentralrastreamento\\.com\\.br$).+"
+          "value": "^(?!cdcentral\\.com\\.br$).+"
         }
       ],
       "headers": [

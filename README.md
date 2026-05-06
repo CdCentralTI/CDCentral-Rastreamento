@@ -273,8 +273,8 @@ TRUST_PROXY_HEADERS=1
 ALLOW_LOCAL_ORIGINS=0
 REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
-SITE_URL=https://cdcentralrastreamento.com.br
-ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
+SITE_URL=https://cdcentral.com.br
+ALLOWED_ORIGINS=https://cdcentral.com.br
 ENABLE_CANONICAL_REDIRECT=0
 CSP_REPORT_URL=https://cd-central.vercel.app/api/csp-report
 SUPABASE_URL=https://your-project-ref.supabase.co
@@ -312,7 +312,7 @@ CRON_SECRET=your_random_cron_secret
   Use `1` somente depois que o domínio em `SITE_URL` estiver resolvendo publicamente. Quando desligado, hosts auxiliares não são redirecionados para evitar indisponibilidade por DNS incompleto.
 
 - `CSP_REPORT_URL`
-  Endpoint HTTPS absoluto para relatorios CSP. Use um dominio que resolva publicamente; enquanto `cdcentralrastreamento.com.br` nao resolver, aponte para o dominio de producao da Vercel.
+  Endpoint HTTPS absoluto para relatorios CSP. Use um dominio que resolva publicamente; enquanto `cdcentral.com.br` nao resolver, aponte para o dominio de producao da Vercel.
 
 - `NODE_ENV`
   Use `production` em Hostinger/VPS e `development` localmente.
@@ -404,14 +404,14 @@ Para Vercel, puxe as variaveis do ambiente antes de validar. Os arquivos `.env.*
 
 ```powershell
 npx vercel env pull .env.production.local --environment=production --yes
-node scripts/validate-runtime-env.js --env=.env.production.local --target=production --domain=cdcentralrastreamento.com.br
+node scripts/validate-runtime-env.js --env=.env.production.local --target=production --domain=cdcentral.com.br
 ```
 
 Para staging/preview, use um arquivo separado e ajuste o dominio esperado:
 
 ```powershell
 npx vercel env pull .env.staging.local --environment=preview --yes
-node scripts/validate-runtime-env.js --env=.env.staging.local --target=staging --domain=staging.cdcentralrastreamento.com.br
+node scripts/validate-runtime-env.js --env=.env.staging.local --target=staging --domain=staging.cdcentral.com.br
 ```
 
 Depois de confirmar as variaveis, valide a gravacao real no Supabase. O comando insere uma linha com prefixo `[SMOKE]` na tabela configurada:
@@ -423,7 +423,7 @@ node scripts/smoke-supabase-lead.js --env=.env.production.local --target=product
 Depois do deploy publicado, rode um smoke test contra a URL real para confirmar DNS, headers, `/api/public-config`, Turnstile e asset otimizado:
 
 ```powershell
-node scripts/smoke-deploy.js --url=https://cdcentralrastreamento.com.br
+node scripts/smoke-deploy.js --url=https://cdcentral.com.br
 ```
 
 Se quiser exigir Turnstile no smoke test, use `--require-turnstile`.
@@ -438,7 +438,7 @@ Pontos importantes na publicação:
 - se editar o JSON-LD em [public/index.html](./public/index.html), rodar `node scripts/update-csp-hash.js` antes de deploy Vercel; `npm run build` agora falha quando o hash ficar desatualizado;
 - garantir que o domínio final esteja em `SITE_URL`;
 - manter `ENABLE_CANONICAL_REDIRECT=0` até o domínio final resolver em DNS e só então ativar o redirect canônico;
-- revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentralrastreamento.com.br`;
+- revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentral.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção; `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback;
 - mantenha `REQUIRE_TURNSTILE=0` se o formulario deve funcionar sem anti-spam; se ativar `REQUIRE_TURNSTILE=1`, configure `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`;
@@ -476,7 +476,7 @@ Este projeto atualmente é uma landing page de captação de leads. Ele ainda n�
 - validar o formulário no navegador;
 - rodar `node scripts/validate-runtime-env.js` para staging/producao;
 - testar o envio real de lead ate o Supabase com `node scripts/smoke-supabase-lead.js --confirm-write`;
-- validar o deploy real com `node scripts/smoke-deploy.js --url=https://cdcentralrastreamento.com.br`;
+- validar o deploy real com `node scripts/smoke-deploy.js --url=https://cdcentral.com.br`;
 - verificar responsividade em mobile, tablet e desktop;
 - revisar páginas legais:
   [public/politica-de-privacidade.html](./public/politica-de-privacidade.html)

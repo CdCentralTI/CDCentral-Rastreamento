@@ -1,7 +1,7 @@
 "use strict";
 
 process.env.NODE_ENV = "production";
-process.env.SITE_URL = "https://cdcentralrastreamento.com.br";
+process.env.SITE_URL = "https://cdcentral.com.br";
 process.env.ENABLE_CANONICAL_REDIRECT = "1";
 process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
 process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
@@ -27,7 +27,7 @@ const request = ({ method = "GET", path = "/", headers = {} }) =>
         method,
         path,
         headers: {
-          Host: "cdcentralrastreamento.com.br",
+          Host: "cdcentral.com.br",
           ...headers,
         },
       },
@@ -70,7 +70,7 @@ test("redireciona host nao canonico em producao com robots noarchive", async () 
   });
 
   assert.equal(response.statusCode, 301);
-  assert.equal(response.headers.location, "https://cdcentralrastreamento.com.br/rastreamento?utm=preview");
+  assert.equal(response.headers.location, "https://cdcentral.com.br/rastreamento?utm=preview");
   assert.equal(response.headers["x-robots-tag"], "noindex, nofollow, noarchive");
   assert.equal(response.headers["cache-control"], "no-store");
 });
@@ -81,8 +81,8 @@ test("serve headers de seguranca fortes no host canonico em producao", async () 
   assert.equal(response.statusCode, 200);
   assert.match(response.headers["permissions-policy"], /payment=\(\)/);
   assert.match(response.headers["permissions-policy"], /interest-cohort=\(\)/);
-  assert.equal(response.headers["reporting-endpoints"], 'default="https://cdcentralrastreamento.com.br/api/csp-report"');
-  assert.equal(JSON.parse(response.headers["report-to"]).endpoints[0].url, "https://cdcentralrastreamento.com.br/api/csp-report");
+  assert.equal(response.headers["reporting-endpoints"], 'default="https://cdcentral.com.br/api/csp-report"');
+  assert.equal(JSON.parse(response.headers["report-to"]).endpoints[0].url, "https://cdcentral.com.br/api/csp-report");
   assert.equal(response.headers["cross-origin-embedder-policy"], "require-corp");
   assert.equal(response.headers["strict-transport-security"], "max-age=63072000; includeSubDomains; preload");
 });
@@ -90,20 +90,20 @@ test("serve headers de seguranca fortes no host canonico em producao", async () 
 test("getSecurityHeaders usa endpoint absoluto de relatorio CSP", () => {
   const headers = getSecurityHeaders({
     headers: {
-      host: "cdcentralrastreamento.com.br",
+      host: "cdcentral.com.br",
     },
   });
 
-  assert.equal(headers["Reporting-Endpoints"], 'default="https://cdcentralrastreamento.com.br/api/csp-report"');
+  assert.equal(headers["Reporting-Endpoints"], 'default="https://cdcentral.com.br/api/csp-report"');
   assert.deepEqual(JSON.parse(headers["Report-To"]), {
     group: "default",
     max_age: 10886400,
-    endpoints: [{ url: "https://cdcentralrastreamento.com.br/api/csp-report" }],
+    endpoints: [{ url: "https://cdcentral.com.br/api/csp-report" }],
     include_subdomains: false,
   });
   assert.match(
     headers["Content-Security-Policy-Report-Only"],
-    /report-uri https:\/\/cdcentralrastreamento\.com\.br\/api\/csp-report/
+    /report-uri https:\/\/cdcentral\.com\.br\/api\/csp-report/
   );
 });
 

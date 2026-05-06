@@ -1,7 +1,7 @@
 "use strict";
 
 process.env.NODE_ENV = "production";
-process.env.SITE_URL = "https://cdcentralrastreamento.com.br";
+process.env.SITE_URL = "https://cdcentral.com.br";
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_test_key";
 delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;

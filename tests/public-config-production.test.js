@@ -2,7 +2,7 @@
 
 process.env.NODE_ENV = "production";
 process.env.VERCEL = "1";
-process.env.SITE_URL = "https://cdcentralrastreamento.com.br";
+process.env.SITE_URL = "https://cdcentral.com.br";
 delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
 delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;

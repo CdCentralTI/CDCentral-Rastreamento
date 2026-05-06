@@ -98,8 +98,8 @@ TRUST_PROXY_HEADERS=1
 ALLOW_LOCAL_ORIGINS=0
 REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
-SITE_URL=https://cdcentralrastreamento.com.br
-ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
+SITE_URL=https://cdcentral.com.br
+ALLOWED_ORIGINS=https://cdcentral.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
@@ -147,7 +147,7 @@ Na Vercel, `vercel.json` agenda `/api/purge-leads`. Na Hostinger, essa agenda na
 Use uma string URL-safe para `CRON_SECRET` para evitar problemas de escape no shell. Exemplo de comando do cron:
 
 ```bash
-curl -fsS -H "Authorization: Bearer your_random_url_safe_secret" https://cdcentralrastreamento.com.br/api/purge-leads
+curl -fsS -H "Authorization: Bearer your_random_url_safe_secret" https://cdcentral.com.br/api/purge-leads
 ```
 
 Sem o header `Authorization`, `/api/purge-leads` deve responder `401`.
@@ -166,7 +166,7 @@ Se alterar variaveis depois do deploy, faca redeploy ou restart pelo painel para
 Health check:
 
 ```bash
-curl -i https://cdcentralrastreamento.com.br/health
+curl -i https://cdcentral.com.br/health
 ```
 
 Resposta esperada:
@@ -178,7 +178,7 @@ Resposta esperada:
 Config publica:
 
 ```bash
-curl -i https://cdcentralrastreamento.com.br/api/public-config
+curl -i https://cdcentral.com.br/api/public-config
 ```
 
 Deve responder JSON com `consentVersion`.
@@ -186,11 +186,11 @@ Deve responder JSON com `consentVersion`.
 Site:
 
 ```bash
-curl -I https://cdcentralrastreamento.com.br/
-curl -I https://cdcentralrastreamento.com.br/assets/css/styles.css
-curl -I https://cdcentralrastreamento.com.br/assets/js/script.js
-curl -I https://cdcentralrastreamento.com.br/assets/fonts/manrope-latin.woff2
-curl -I https://cdcentralrastreamento.com.br/.well-known/security.txt
+curl -I https://cdcentral.com.br/
+curl -I https://cdcentral.com.br/assets/css/styles.css
+curl -I https://cdcentral.com.br/assets/js/script.js
+curl -I https://cdcentral.com.br/assets/fonts/manrope-latin.woff2
+curl -I https://cdcentral.com.br/.well-known/security.txt
 ```
 
 `assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
@@ -198,16 +198,16 @@ curl -I https://cdcentralrastreamento.com.br/.well-known/security.txt
 Arquivos sensiveis devem retornar 404:
 
 ```bash
-curl -I https://cdcentralrastreamento.com.br/.env
-curl -I https://cdcentralrastreamento.com.br/package.json
-curl -I https://cdcentralrastreamento.com.br/api/leads.js
-curl -I https://cdcentralrastreamento.com.br/lib/leads-service.js
-curl -I https://cdcentralrastreamento.com.br/database/supabase/leads-schema.sql
+curl -I https://cdcentral.com.br/.env
+curl -I https://cdcentral.com.br/package.json
+curl -I https://cdcentral.com.br/api/leads.js
+curl -I https://cdcentral.com.br/lib/leads-service.js
+curl -I https://cdcentral.com.br/database/supabase/leads-schema.sql
 ```
 
 Envio de lead:
 
-1. Abra `https://cdcentralrastreamento.com.br/`.
+1. Abra `https://cdcentral.com.br/`.
 2. Preencha o formulario.
 3. Marque o consentimento.
 4. Envie e confira se o lead aparece no Supabase.
@@ -215,7 +215,7 @@ Envio de lead:
 Expurgo sem autorizacao:
 
 ```bash
-curl -i https://cdcentralrastreamento.com.br/api/purge-leads
+curl -i https://cdcentral.com.br/api/purge-leads
 ```
 
 Resposta esperada: `401`.

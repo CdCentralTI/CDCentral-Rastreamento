@@ -31,7 +31,7 @@ try {
 }
 
 const target = String(args.target || process.env.VERCEL_ENV || process.env.NODE_ENV || "production").toLowerCase();
-const expectedDomain = String(args.domain || "cdcentralrastreamento.com.br").toLowerCase();
+const expectedDomain = String(args.domain || "cdcentral.com.br").toLowerCase();
 const isProductionTarget = ["production", "prod"].includes(target);
 const isPublishedTarget = isProductionTarget || ["preview", "staging"].includes(target);
 const results = [];

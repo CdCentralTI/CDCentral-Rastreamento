@@ -1,7 +1,7 @@
 "use strict";
 
 process.env.NODE_ENV = "production";
-process.env.SITE_URL = "https://cdcentralrastreamento.com.br";
+process.env.SITE_URL = "https://cdcentral.com.br";
 process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
 process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
 process.env.SUPABASE_URL = "https://example.supabase.co";

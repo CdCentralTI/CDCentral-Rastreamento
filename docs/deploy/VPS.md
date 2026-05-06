@@ -64,8 +64,8 @@ TRUST_PROXY_HEADERS=1
 ALLOW_LOCAL_ORIGINS=0
 REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
-SITE_URL=https://cdcentralrastreamento.com.br
-ALLOWED_ORIGINS=https://cdcentralrastreamento.com.br
+SITE_URL=https://cdcentral.com.br
+ALLOWED_ORIGINS=https://cdcentral.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
@@ -159,7 +159,7 @@ Conteudo:
 ```nginx
 server {
     listen 80;
-    server_name cdcentralrastreamento.com.br www.cdcentralrastreamento.com.br;
+    server_name cdcentral.com.br www.cdcentral.com.br;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -201,22 +201,22 @@ Nao abra `3000/tcp` publicamente. O Nginx acessa `http://127.0.0.1:3000` localme
 
 ```bash
 sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d cdcentralrastreamento.com.br -d www.cdcentralrastreamento.com.br
+sudo certbot --nginx -d cdcentral.com.br -d www.cdcentral.com.br
 sudo certbot renew --dry-run
 ```
 
-Depois do SSL, confira que `.env` usa `SITE_URL=https://cdcentralrastreamento.com.br`.
+Depois do SSL, confira que `.env` usa `SITE_URL=https://cdcentral.com.br`.
 
 ## 10. Testar producao
 
 ```bash
-curl -i https://cdcentralrastreamento.com.br/health
-curl -i https://cdcentralrastreamento.com.br/api/public-config
-curl -I https://cdcentralrastreamento.com.br/
-curl -I https://cdcentralrastreamento.com.br/assets/css/styles.css
-curl -I https://cdcentralrastreamento.com.br/assets/js/script.js
-curl -I https://cdcentralrastreamento.com.br/assets/fonts/manrope-latin.woff2
-curl -I https://cdcentralrastreamento.com.br/.well-known/security.txt
+curl -i https://cdcentral.com.br/health
+curl -i https://cdcentral.com.br/api/public-config
+curl -I https://cdcentral.com.br/
+curl -I https://cdcentral.com.br/assets/css/styles.css
+curl -I https://cdcentral.com.br/assets/js/script.js
+curl -I https://cdcentral.com.br/assets/fonts/manrope-latin.woff2
+curl -I https://cdcentral.com.br/.well-known/security.txt
 ```
 
 `assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
@@ -224,12 +224,12 @@ curl -I https://cdcentralrastreamento.com.br/.well-known/security.txt
 Arquivos sensiveis devem retornar 404:
 
 ```bash
-curl -I https://cdcentralrastreamento.com.br/.env
-curl -I https://cdcentralrastreamento.com.br/package.json
-curl -I https://cdcentralrastreamento.com.br/package-lock.json
-curl -I https://cdcentralrastreamento.com.br/api/leads.js
-curl -I https://cdcentralrastreamento.com.br/lib/http-utils.js
-curl -I https://cdcentralrastreamento.com.br/database/supabase/leads-schema.sql
+curl -I https://cdcentral.com.br/.env
+curl -I https://cdcentral.com.br/package.json
+curl -I https://cdcentral.com.br/package-lock.json
+curl -I https://cdcentral.com.br/api/leads.js
+curl -I https://cdcentral.com.br/lib/http-utils.js
+curl -I https://cdcentral.com.br/database/supabase/leads-schema.sql
 ```
 
 Teste o formulario no navegador para validar origem, Supabase e rate limit. Se Turnstile estiver habilitado, valide tambem o widget real.
