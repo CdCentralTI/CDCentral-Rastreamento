@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const http = require("http");
 const path = require("path");
 const { anonymizeIp, getClientIp } = require("./lib/http-utils");
-const { assertProductionSecurityConfig } = require("./lib/production-security");
+const { assertProductionSecurityConfig, getProductionSecurityConfigErrors } = require("./lib/production-security");
 
 const workspaceRoot = path.resolve(__dirname);
 const publicRoot = path.join(workspaceRoot, "public");
@@ -63,7 +63,17 @@ const normalizeListenHost = (value) => {
   return zeroNormalizedHost === "0.0.0.0" ? "0.0.0.0" : rawHost;
 };
 
-const PORT = Number(process.env.PORT || 3000);
+const normalizeListenPort = (value) => {
+  const rawPort = String(value || "").trim();
+  if (!rawPort) {
+    return 3000;
+  }
+
+  const port = Number(rawPort.replace(/[oO]/g, "0"));
+  return Number.isInteger(port) && port > 0 && port < 65536 ? port : 3000;
+};
+
+const PORT = normalizeListenPort(process.env.PORT);
 const HOST = normalizeListenHost(process.env.HOST);
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel processar sua solicitacao agora.";
 const SHUTDOWN_TIMEOUT_MS = 10000;
@@ -507,7 +517,14 @@ const handleRequest = (req, res) => {
 };
 
 const createAppServer = () => {
-  assertProductionSecurityConfig();
+  const productionConfigErrors = getProductionSecurityConfigErrors();
+  if (productionConfigErrors.length > 0) {
+    console.error("Production security config invalid; static site remains online and protected APIs will return 503.", {
+      code: "production_security_config_invalid",
+      errors: productionConfigErrors,
+    });
+  }
+
   return http.createServer(handleRequest);
 };
 
@@ -573,5 +590,6 @@ module.exports = Object.assign(handleRequest, {
   createAppServer,
   getSecurityHeaders,
   normalizeListenHost,
+  normalizeListenPort,
   startServer,
 });

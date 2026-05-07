@@ -11,7 +11,7 @@ delete process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION;
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createAppServer, normalizeListenHost } = require("../server");
+const { assertProductionSecurityConfig, createAppServer, normalizeListenHost, normalizeListenPort } = require("../server");
 
 test("normaliza HOST com letra O para endereco wildcard valido", () => {
   assert.equal(normalizeListenHost("O.O.O.O"), "0.0.0.0");
@@ -19,8 +19,29 @@ test("normaliza HOST com letra O para endereco wildcard valido", () => {
   assert.equal(normalizeListenHost("127.0.0.1"), "127.0.0.1");
 });
 
+test("normaliza PORT invalida para porta padrao", () => {
+  assert.equal(normalizeListenPort("3O00"), 3000);
+  assert.equal(normalizeListenPort("8080"), 8080);
+  assert.equal(normalizeListenPort("invalid"), 3000);
+  assert.equal(normalizeListenPort("70000"), 3000);
+});
+
 test("server permite producao sem Upstash quando rate limit externo nao e obrigatorio", () => {
   assert.doesNotThrow(() => createAppServer());
+});
+
+test("server sobe mesmo com config de API invalida", () => {
+  const originalSupabaseUrl = process.env.SUPABASE_URL;
+  const originalSupabaseKey = process.env.SUPABASE_LEADS_INSERT_KEY;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_LEADS_INSERT_KEY;
+
+  try {
+    assert.doesNotThrow(() => createAppServer());
+  } finally {
+    process.env.SUPABASE_URL = originalSupabaseUrl;
+    process.env.SUPABASE_LEADS_INSERT_KEY = originalSupabaseKey;
+  }
 });
 
 test("server exige Upstash quando rate limit externo e obrigatorio", () => {
@@ -30,7 +51,7 @@ test("server exige Upstash quando rate limit externo e obrigatorio", () => {
 
   try {
     assert.throws(
-      () => createAppServer(),
+      () => assertProductionSecurityConfig(),
       (error) =>
         error instanceof Error &&
         /Production security config invalid/.test(error.message) &&
@@ -51,7 +72,7 @@ test("server rejeita SUPABASE_SERVICE_ROLE_KEY como fallback em producao", () =>
 
   try {
     assert.throws(
-      () => createAppServer(),
+      () => assertProductionSecurityConfig(),
       (error) =>
         error instanceof Error &&
         /Production security config invalid/.test(error.message) &&
@@ -70,7 +91,7 @@ test("server rejeita SUPABASE_LEADS_INSERT_KEY publishable em producao", () => {
 
   try {
     assert.throws(
-      () => createAppServer(),
+      () => assertProductionSecurityConfig(),
       (error) =>
         error instanceof Error &&
         /Production security config invalid/.test(error.message) &&
