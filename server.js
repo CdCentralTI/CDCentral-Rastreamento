@@ -53,8 +53,18 @@ const publicConfigHandler = require("./api/public-config");
 const cspReportHandler = require("./api/csp-report");
 const purgeLeadsHandler = require("./api/purge-leads");
 
+const normalizeListenHost = (value) => {
+  const rawHost = String(value || "").trim();
+  if (!rawHost) {
+    return "0.0.0.0";
+  }
+
+  const zeroNormalizedHost = rawHost.replace(/[oO]/g, "0");
+  return zeroNormalizedHost === "0.0.0.0" ? "0.0.0.0" : rawHost;
+};
+
 const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || "0.0.0.0";
+const HOST = normalizeListenHost(process.env.HOST);
 const GENERIC_ERROR_MESSAGE = "Nao foi possivel processar sua solicitacao agora.";
 const SHUTDOWN_TIMEOUT_MS = 10000;
 const DEFAULT_SITE_URL = "https://cdcentral.com.br";
@@ -562,5 +572,6 @@ module.exports = Object.assign(handleRequest, {
   assertProductionSecurityConfig,
   createAppServer,
   getSecurityHeaders,
+  normalizeListenHost,
   startServer,
 });

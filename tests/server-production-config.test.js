@@ -11,7 +11,13 @@ delete process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION;
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { createAppServer } = require("../server");
+const { createAppServer, normalizeListenHost } = require("../server");
+
+test("normaliza HOST com letra O para endereco wildcard valido", () => {
+  assert.equal(normalizeListenHost("O.O.O.O"), "0.0.0.0");
+  assert.equal(normalizeListenHost("0.0.0.0"), "0.0.0.0");
+  assert.equal(normalizeListenHost("127.0.0.1"), "127.0.0.1");
+});
 
 test("server permite producao sem Upstash quando rate limit externo nao e obrigatorio", () => {
   assert.doesNotThrow(() => createAppServer());
