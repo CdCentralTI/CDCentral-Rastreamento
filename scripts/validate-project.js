@@ -27,6 +27,7 @@ const jsFiles = [
   "lib/leads-service.js",
   "public/assets/js/script.js",
   "scripts/lib/env.js",
+  "scripts/check-supabase-rls.js",
   "scripts/optimize-images.js",
   "scripts/smoke-deploy.js",
   "scripts/smoke-supabase-lead.js",

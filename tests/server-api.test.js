@@ -153,3 +153,34 @@ test("grava lead valido com dados normalizados", async () => {
   assert.equal(insertedRows[0].veiculos, 2);
   assert.equal(insertedRows[0].consent_ip, "127.0.0.0");
 });
+
+test("retorna mensagem generica quando o Supabase nega permissao", async () => {
+  const previousFetch = global.fetch;
+
+  try {
+    global.fetch = async () => ({
+      ok: false,
+      status: 403,
+      statusText: "Forbidden",
+      text: async () => '{"code":"42501","message":"permission denied for table leads"}',
+    });
+
+    const response = await postLead({
+      nome: "Joao Silva",
+      whatsapp: "(98) 99999-0000",
+      tipo: "Pessoa fisica",
+      veiculos: "1",
+      empresa: "",
+      startedAt: String(Date.now() - 2000),
+      consent: true,
+      consentVersion: "2026-04-28",
+    });
+
+    assert.equal(response.statusCode, 502);
+    assert.deepEqual(JSON.parse(response.body), {
+      message: "Nao foi possivel enviar sua solicitacao agora. Tente novamente em instantes.",
+    });
+  } finally {
+    global.fetch = previousFetch;
+  }
+});

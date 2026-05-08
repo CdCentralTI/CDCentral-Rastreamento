@@ -118,6 +118,67 @@ test("bloqueia fallback para SUPABASE_SERVICE_ROLE_KEY mesmo com opt-in legado",
   );
 });
 
+test("rejeita SUPABASE_URL com caminho /rest/v1", async () => {
+  process.env.SUPABASE_URL = "https://example.supabase.co/rest/v1";
+  process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_service_role_test_key";
+  process.env.SUPABASE_LEADS_TABLE = "leads";
+
+  await assert.rejects(
+    () =>
+      saveLeadToSupabase({
+        nome: "Maria Silva",
+        whatsapp: "98987577275",
+        tipo: "Pessoa fisica",
+        veiculos: 1,
+        consent_at: new Date().toISOString(),
+        consent_version: "2026-04-28",
+        consent_ip: "127.0.0.1",
+      }),
+    (error) =>
+      error instanceof LeadStorageError &&
+      error.code === "invalid_supabase_config" &&
+      /sem \/rest\/v1/.test(error.details)
+  );
+});
+
+test("classifica erro de permissao do Supabase sem expor segredo", async () => {
+  const originalFetch = global.fetch;
+
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_service_role_test_key";
+  process.env.SUPABASE_LEADS_TABLE = "leads";
+
+  try {
+    global.fetch = async () => ({
+      ok: false,
+      status: 403,
+      statusText: "Forbidden",
+      text: async () => '{"code":"42501","message":"permission denied for table leads"}',
+    });
+
+    await assert.rejects(
+      () =>
+        saveLeadToSupabase({
+          nome: "Maria Silva",
+          whatsapp: "98987577275",
+          tipo: "Pessoa fisica",
+          veiculos: 1,
+          consent_at: new Date().toISOString(),
+          consent_version: "2026-04-28",
+          consent_ip: "127.0.0.1",
+        }),
+      (error) =>
+        error instanceof LeadStorageError &&
+        error.code === "supabase_permission_denied" &&
+        error.statusCode === 502 &&
+        /403 Forbidden/.test(error.details) &&
+        !error.details.includes("sb_secret")
+    );
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("expurgo LGPD remove somente leads com mais de 24 meses", async () => {
   const originalFetch = global.fetch;
   const fetchCalls = [];

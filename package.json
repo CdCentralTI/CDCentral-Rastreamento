@@ -10,6 +10,7 @@
     "dev": "node -e \"process.env.NODE_ENV='development'; require('./server').startServer()\"",
     "build": "npm audit --omit=dev --audit-level=high && node scripts/update-csp-hash.js && node scripts/validate-project.js",
     "check:env": "node scripts/validate-runtime-env.js",
+    "check:rls": "node scripts/check-supabase-rls.js",
     "smoke:supabase": "node scripts/smoke-supabase-lead.js",
     "smoke:deploy": "node scripts/smoke-deploy.js",
     "optimize:images": "node scripts/optimize-images.js",

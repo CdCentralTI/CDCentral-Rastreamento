@@ -1,10 +1,12 @@
 -- Estrategia aplicada:
 -- - O formulario nunca escreve diretamente no Supabase pelo navegador.
 -- - Inserts entram pela API Node.js em /api/leads.
--- - SUPABASE_LEADS_INSERT_KEY deve ser uma chave server-side, preferencialmente
---   service_role/secret key, armazenada apenas em variavel de ambiente do backend.
--- - anon/authenticated ficam sem permissoes nesta tabela para evitar bypass de
---   Turnstile, rate limit e validacoes da API.
+-- - SUPABASE_LEADS_INSERT_KEY deve ser uma chave server-side/secret,
+--   armazenada apenas em variavel de ambiente do backend.
+-- - anon/authenticated/public ficam sem permissoes nesta tabela para evitar
+--   bypass de origem, honeypot, rate limit e validacoes da API.
+-- - O alerta "RLS enabled but no policies" e seguro neste desenho: sem policy
+--   publica e sem grants publicos, chaves anon/publishable nao leem nem inserem.
 
 create table if not exists public.leads (
   id bigint generated always as identity primary key,
@@ -46,8 +48,11 @@ alter table public.leads
 
 alter table public.leads enable row level security;
 
-revoke all on table public.leads from anon, authenticated;
-revoke all on sequence public.leads_id_seq from anon, authenticated;
+revoke all on table public.leads from anon, authenticated, public;
+revoke all on sequence public.leads_id_seq from anon, authenticated, public;
+
+grant select, insert, delete on table public.leads to service_role;
+grant usage, select on sequence public.leads_id_seq to service_role;
 
 do $$
 begin
@@ -108,16 +113,28 @@ begin
   end if;
 end $$;
 
-drop policy if exists leads_insert_only on public.leads;
+do $$
+declare
+  existing_policy text;
+begin
+  for existing_policy in
+    select policyname
+      from pg_policies
+     where schemaname = 'public'
+       and tablename = 'leads'
+  loop
+    execute format('drop policy if exists %I on public.leads', existing_policy);
+  end loop;
+end $$;
 
 comment on table public.leads is
-  'Leads inseridos somente pela API Node.js server-side. RLS fica ativo e anon/authenticated nao possuem policy de insert.';
+  'Leads inseridos somente pela API Node.js server-side. RLS fica ativo e anon/authenticated/public nao possuem grants nem policies.';
 
 -- Mantem a tabela fechada para chaves publicas do navegador.
 -- A insercao deve acontecer somente pela API server-side usando SUPABASE_LEADS_INSERT_KEY.
--- Se voce decidir usar anon/publishable key, NAO exponha a tabela diretamente sem
--- outra protecao server-side: crie uma funcao/edge function segura ou uma policy
--- extremamente restrita e aceite que ela podera ser chamada fora do site.
+-- Nao crie policy para anon nesta arquitetura. Se no futuro o projeto mudar para
+-- insert direto do front-end, crie uma policy apenas de INSERT com WITH CHECK,
+-- sem SELECT/UPDATE/DELETE, e aceite que ela podera ser chamada fora do site.
 
 do $$
 declare
@@ -125,6 +142,7 @@ declare
   anon_authenticated_grants integer;
   anon_authenticated_policies integer;
   sequence_usage_open boolean;
+  service_role_missing_grants text[];
 begin
   select c.relrowsecurity
     into leads_rls_enabled
@@ -142,10 +160,10 @@ begin
     from information_schema.role_table_grants
    where table_schema = 'public'
      and table_name = 'leads'
-     and grantee in ('anon', 'authenticated');
+     and lower(grantee) in ('anon', 'authenticated', 'public');
 
   if anon_authenticated_grants > 0 then
-    raise exception 'public.leads must not grant privileges to anon/authenticated';
+    raise exception 'public.leads must not grant privileges to anon/authenticated/public';
   end if;
 
   select count(*)
@@ -163,11 +181,29 @@ begin
     raise exception 'public.leads must not expose RLS policies to anon/authenticated/public';
   end if;
 
-  select has_sequence_privilege('anon', 'public.leads_id_seq', 'USAGE')
-      or has_sequence_privilege('authenticated', 'public.leads_id_seq', 'USAGE')
+  select exists (
+    select 1
+      from information_schema.role_usage_grants
+     where object_schema = 'public'
+       and object_name = 'leads_id_seq'
+       and lower(grantee) in ('anon', 'authenticated', 'public')
+  )
     into sequence_usage_open;
 
   if sequence_usage_open then
-    raise exception 'public.leads_id_seq must not grant USAGE to anon/authenticated';
+    raise exception 'public.leads_id_seq must not grant USAGE to anon/authenticated/public';
+  end if;
+
+  select array_agg(required_privilege)
+    into service_role_missing_grants
+    from unnest(array['SELECT', 'INSERT', 'DELETE']) as required(required_privilege)
+   where not has_table_privilege('service_role', 'public.leads', required_privilege);
+
+  if coalesce(array_length(service_role_missing_grants, 1), 0) > 0 then
+    raise exception 'service_role missing table privileges on public.leads: %', service_role_missing_grants;
+  end if;
+
+  if not has_sequence_privilege('service_role', 'public.leads_id_seq', 'USAGE') then
+    raise exception 'service_role missing USAGE on public.leads_id_seq';
   end if;
 end $$;

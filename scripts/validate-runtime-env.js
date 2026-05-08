@@ -126,9 +126,13 @@ const supabaseUrl = requireUrl("SUPABASE_URL", "supabase");
 if (supabaseUrl && !supabaseUrl.hostname.endsWith(".supabase.co")) {
   addWarn("supabase", `SUPABASE_URL host is ${supabaseUrl.hostname}; confirm this is intentional`);
 }
+if (supabaseUrl && supabaseUrl.pathname && supabaseUrl.pathname !== "/") {
+  addError("supabase", "SUPABASE_URL must be only the project root, for example https://project-ref.supabase.co, without /rest/v1");
+}
 
 const supabaseInsertKey = String(process.env.SUPABASE_LEADS_INSERT_KEY || "").trim();
 const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const supabasePublicKey = String(process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "").trim();
 
 if (supabaseInsertKey) {
   validateSupabaseServerKey("SUPABASE_LEADS_INSERT_KEY", supabaseInsertKey);
@@ -138,6 +142,10 @@ if (supabaseInsertKey) {
 
 if (supabaseServiceRoleKey) {
   addWarn("supabase key", "SUPABASE_SERVICE_ROLE_KEY is ignored; configure only SUPABASE_LEADS_INSERT_KEY");
+}
+
+if (supabasePublicKey) {
+  addWarn("supabase key", "SUPABASE_ANON_KEY/SUPABASE_PUBLISHABLE_KEY is only for RLS checks; the app must not use it for lead inserts");
 }
 
 const table = String(process.env.SUPABASE_LEADS_TABLE || "leads").trim();
