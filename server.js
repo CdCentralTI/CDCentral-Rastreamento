@@ -178,9 +178,17 @@ const getJsonLdHashDirective = () => {
   try {
     const indexHtml = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
     const jsonLdMatch = indexHtml.match(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/);
-    cachedJsonLdHashDirective = jsonLdMatch
-      ? `'sha256-${crypto.createHash("sha256").update(jsonLdMatch[1]).digest("base64")}'`
-      : "";
+    if (!jsonLdMatch) {
+      cachedJsonLdHashDirective = "";
+    } else {
+      const getHashDirective = (value) => `'sha256-${crypto.createHash("sha256").update(value).digest("base64")}'`;
+      cachedJsonLdHashDirective = [
+        getHashDirective(jsonLdMatch[1]),
+        getHashDirective(jsonLdMatch[1].replace(/\r\n/g, "\n")),
+      ]
+        .filter((directive, index, directives) => directives.indexOf(directive) === index)
+        .join(" ");
+    }
   } catch (error) {
     cachedJsonLdHashDirective = "";
   }

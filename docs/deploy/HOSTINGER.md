@@ -33,6 +33,8 @@ public/politica-de-privacidade.html
 public/termos-de-uso.html
 public/robots.txt
 public/sitemap.xml
+public/.htaccess
+.htaccess
 app.js
 server.js
 package.json
@@ -103,10 +105,14 @@ REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
 SITE_URL=https://cdcentral.com.br
 ALLOWED_ORIGINS=https://cdcentral.com.br
+ENABLE_CANONICAL_REDIRECT=1
+CSP_REPORT_URL=https://cdcentral.com.br/api/csp-report
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
-REQUIRE_EXTERNAL_RATE_LIMIT=0
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+REQUIRE_EXTERNAL_RATE_LIMIT=1
 CRON_SECRET=your_random_url_safe_secret
 ```
 
@@ -129,11 +135,7 @@ Se voce preferir usar anon/publishable key, sera necessario redesenhar as permis
 
 ### Upstash Redis
 
-`UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` sao recomendados em producao para rate limit distribuido. Sem Redis e com `REQUIRE_EXTERNAL_RATE_LIMIT=0`, a API usa fallback em memoria.
-
-`ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION` fica apenas por compatibilidade. Se essa variavel existir no ambiente, mantenha `0`.
-
-Se for usar Upstash, cadastre tambem:
+`UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` sao obrigatorios em producao para rate limit distribuido. Cadastre:
 
 ```env
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
@@ -141,7 +143,21 @@ UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 REQUIRE_EXTERNAL_RATE_LIMIT=1
 ```
 
-Nao cadastre `UPSTASH_REDIS_REST_URL` ou `UPSTASH_REDIS_REST_TOKEN` com valores placeholder. Se nao tiver Upstash ainda, deixe essas duas variaveis ausentes e mantenha `REQUIRE_EXTERNAL_RATE_LIMIT=0`.
+Nao cadastre `UPSTASH_REDIS_REST_URL` ou `UPSTASH_REDIS_REST_TOKEN` com valores placeholder. Se Upstash estiver ausente em producao, `/api/leads` deve falhar fechado com `503` em vez de usar limite em memoria.
+
+### Headers na Hostinger/HCDN
+
+O Node define os headers de seguranca e cache, mas a Hostinger/HCDN pode servir arquivos estaticos diretamente antes do processo Node.js. Por isso `.htaccess` e `public/.htaccess` ficam versionados; confirme qual deles a Hostinger copia para o `public_html` do deploy.
+
+Depois do deploy, confira no hPanel ou por SSH se `/home/{usuario}/domains/{dominio}/public_html/.htaccess` contem as regras deste projeto. Se o hPanel regenerar o arquivo automaticamente, mescle as regras de `.htaccess` no arquivo final sem remover o roteamento Node.js criado pela Hostinger.
+
+Se o dominio continuar retornando `Content-Security-Policy: upgrade-insecure-requests`, remova/desative a regra de seguranca da Hostinger/CDN que injeta essa CSP simplificada ou substitua por esta CSP completa do projeto:
+
+```text
+default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-b/JfdtwQ9VBHDeIKrBLCg8Ptgj9yYk227V66a+jUuL0=' 'sha256-9lcytKYWLs6ENp+o2EFXls1B9LWxFepwHj6ux4L92FM='; script-src-attr 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'none'; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests
+```
+
+Limpe o cache da HCDN depois de alterar `.htaccess` ou headers no hPanel.
 
 ### Expurgo LGPD via Cron Job
 
@@ -196,7 +212,7 @@ curl -I https://cdcentral.com.br/assets/fonts/manrope-latin.woff2
 curl -I https://cdcentral.com.br/.well-known/security.txt
 ```
 
-`assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
+`/`, paginas HTML, `assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes devem responder com `Cache-Control: public, max-age=31536000, immutable`. O header `Content-Security-Policy` deve conter a politica completa, nao apenas `upgrade-insecure-requests`.
 
 Arquivos sensiveis devem retornar 404:
 

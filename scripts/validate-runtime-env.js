@@ -162,7 +162,11 @@ const kvToken = String(process.env.KV_REST_API_TOKEN || "").trim();
 
 const requireExternalRateLimit = String(process.env.REQUIRE_EXTERNAL_RATE_LIMIT || "").trim() === "1";
 
-if (isPublishedTarget && requireExternalRateLimit) {
+if (isPublishedTarget && !requireExternalRateLimit) {
+  addError("rate limit", "REQUIRE_EXTERNAL_RATE_LIMIT must be 1 in staging/production");
+}
+
+if (isPublishedTarget) {
   requireUrl("UPSTASH_REDIS_REST_URL", "upstash redis");
   requireVariable("UPSTASH_REDIS_REST_TOKEN", "upstash redis");
   if (kvUrl || kvToken) {
@@ -182,8 +186,6 @@ if (isPublishedTarget && requireExternalRateLimit) {
 if (isPublishedTarget) {
   if (requireExternalRateLimit) {
     addOk("rate limit", "external rate limit is required");
-  } else {
-    addWarn("rate limit", "external rate limit is disabled; memory fallback is best-effort");
   }
 
   if (String(process.env.REQUIRE_REQUEST_ORIGIN || "").trim() === "0") {
@@ -194,6 +196,12 @@ if (isPublishedTarget) {
 }
 
 if (isProductionTarget) {
+  if (String(process.env.ENABLE_CANONICAL_REDIRECT || "").trim() !== "1") {
+    addError("canonical redirect", "ENABLE_CANONICAL_REDIRECT must be 1 after final DNS is active");
+  } else {
+    addOk("canonical redirect", "canonical redirect is enabled");
+  }
+
   requireVariable("CRON_SECRET", "cron");
   requireUrl("CSP_REPORT_URL", "csp reporting");
 }

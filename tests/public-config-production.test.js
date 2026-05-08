@@ -35,6 +35,10 @@ test("public-config retorna apenas a versao de consentimento", async () => {
   assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(body.consentVersion));
   assert.equal(body.turnstileEnabled, undefined);
   assert.equal(body.turnstileSiteKey, undefined);
+  assert.equal(response.headers["content-security-policy"], "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+  assert.equal(response.headers["referrer-policy"], "strict-origin-when-cross-origin");
+  assert.match(response.headers["permissions-policy"], /geolocation=\(\)/);
+  assert.equal(response.headers["strict-transport-security"], "max-age=63072000; includeSubDomains; preload");
 });
 
 test("public-config rejeita metodo nao GET", async () => {

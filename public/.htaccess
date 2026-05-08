@@ -1,0 +1,29 @@
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=(), interest-cohort=()"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+  Header always set X-Permitted-Cross-Domain-Policies "none"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Embedder-Policy "require-corp"
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-b/JfdtwQ9VBHDeIKrBLCg8Ptgj9yYk227V66a+jUuL0=' 'sha256-9lcytKYWLs6ENp+o2EFXls1B9LWxFepwHj6ux4L92FM='; script-src-attr 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'none'; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests"
+  Header always set Content-Security-Policy-Report-Only "default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-b/JfdtwQ9VBHDeIKrBLCg8Ptgj9yYk227V66a+jUuL0=' 'sha256-9lcytKYWLs6ENp+o2EFXls1B9LWxFepwHj6ux4L92FM='; script-src-attr 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'none'; worker-src 'none'; manifest-src 'self'; report-uri https://cdcentral.com.br/api/csp-report; report-to default"
+  Header always set Reporting-Endpoints "default=\"https://cdcentral.com.br/api/csp-report\""
+
+  <FilesMatch "\.(html?)$">
+    Header always set Cache-Control "no-cache"
+  </FilesMatch>
+
+  <FilesMatch "\.(css|js)$">
+    Header always set Cache-Control "no-cache"
+  </FilesMatch>
+
+  <FilesMatch "\.(png|jpe?g|webp|ico|svg|woff2?)$">
+    Header always set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  <FilesMatch "^(robots\.txt|sitemap\.xml|security\.txt)$">
+    Header always set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+</IfModule>

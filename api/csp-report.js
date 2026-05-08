@@ -1,5 +1,6 @@
 "use strict";
 
+const { applyApiSecurityHeaders } = require("../lib/api-security-headers");
 const { createRateLimiter, getClientIp: getRequestClientIp } = require("../lib/http-utils");
 
 const MAX_REPORT_BYTES = 8 * 1024;
@@ -111,10 +112,7 @@ const parseReports = (rawBody) => {
 const sendNoContent = (res) => {
   res.statusCode = 204;
   res.setHeader("Cache-Control", "no-store");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Content-Security-Policy", "default-src 'none'");
+  applyApiSecurityHeaders(res);
   res.end();
 };
 

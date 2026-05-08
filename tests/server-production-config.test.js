@@ -4,7 +4,9 @@ process.env.NODE_ENV = "production";
 process.env.SITE_URL = "https://cdcentral.com.br";
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_test_key";
-delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;
+process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "1";
+process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
+process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
 delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
 delete process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION;
@@ -26,7 +28,10 @@ test("normaliza PORT invalida para porta padrao", () => {
   assert.equal(normalizeListenPort("70000"), 3000);
 });
 
-test("server permite producao sem Upstash quando rate limit externo nao e obrigatorio", () => {
+test("server sobe site estatico mesmo quando Upstash obrigatorio esta ausente", () => {
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
   assert.doesNotThrow(() => createAppServer());
 });
 
@@ -59,7 +64,27 @@ test("server exige Upstash quando rate limit externo e obrigatorio", () => {
         /UPSTASH_REDIS_REST_TOKEN/.test(error.message)
     );
   } finally {
-    delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;
+    process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "1";
+    process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
+  }
+});
+
+test("server exige flag explicita de rate limit externo em producao", () => {
+  delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;
+  process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
+
+  try {
+    assert.throws(
+      () => assertProductionSecurityConfig(),
+      (error) =>
+        error instanceof Error &&
+        /Production security config invalid/.test(error.message) &&
+        /REQUIRE_EXTERNAL_RATE_LIMIT must be 1/.test(error.message)
+    );
+  } finally {
+    process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "1";
   }
 });
 
@@ -82,7 +107,7 @@ test("server rejeita SUPABASE_SERVICE_ROLE_KEY como fallback em producao", () =>
   } finally {
     process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_test_key";
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;
+    process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "1";
   }
 });
 

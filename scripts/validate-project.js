@@ -10,6 +10,7 @@ const canonicalSiteUrl = "https://cdcentral.com.br";
 const legacyPreviewUrl = "https://cd-central.vercel.app";
 
 const rootFiles = [
+  ".htaccess",
   "package.json",
   "vercel.json",
 ];
@@ -22,6 +23,7 @@ const jsFiles = [
   "api/leads.js",
   "api/purge-leads.js",
   "api/public-config.js",
+  "lib/api-security-headers.js",
   "lib/app-config.js",
   "lib/http-utils.js",
   "lib/leads-service.js",
@@ -49,6 +51,7 @@ const requiredPublicFiles = [
   "robots.txt",
   "sitemap.xml",
   ".well-known/security.txt",
+  ".htaccess",
   "assets/css/styles.css",
   "assets/js/script.js",
   "assets/fonts/manrope-latin.woff2",
@@ -187,14 +190,18 @@ if (fs.existsSync(cssPath)) {
   }
 }
 
-const getJsonLdHashDirective = (html) => {
+const getJsonLdHashDirectives = (html) => {
   const jsonLdMatch = html.match(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/);
   if (!jsonLdMatch) {
-    return "";
+    return [];
   }
 
   const crypto = require("crypto");
-  return `'sha256-${crypto.createHash("sha256").update(jsonLdMatch[1]).digest("base64")}'`;
+  const getHashDirective = (value) => `'sha256-${crypto.createHash("sha256").update(value).digest("base64")}'`;
+  return [
+    getHashDirective(jsonLdMatch[1]),
+    getHashDirective(jsonLdMatch[1].replace(/\r\n/g, "\n")),
+  ].filter((directive, index, directives) => directives.indexOf(directive) === index);
 };
 
 const canonicalFiles = [
@@ -317,9 +324,9 @@ if (fs.existsSync(vercelConfigPath)) {
 
   const indexPath = path.join(publicRoot, "index.html");
   if (fs.existsSync(indexPath)) {
-    const expectedHashDirective = getJsonLdHashDirective(fs.readFileSync(indexPath, "utf8"));
+    const expectedHashDirectives = getJsonLdHashDirectives(fs.readFileSync(indexPath, "utf8"));
 
-    if (!expectedHashDirective) {
+    if (expectedHashDirectives.length === 0) {
       errors.push("public/index.html: JSON-LD ausente para hash CSP");
     }
 
@@ -328,6 +335,22 @@ if (fs.existsSync(vercelConfigPath)) {
     if (!serverSource.includes("getJsonLdHashDirective")) {
       errors.push("server.js: CSP deve calcular o hash JSON-LD no handler Node");
     }
+
+    [
+      [path.join(root, ".htaccess"), ".htaccess"],
+      [path.join(publicRoot, ".htaccess"), "public/.htaccess"],
+    ].forEach(([htaccessPath, label]) => {
+      const htaccessSource = fs.existsSync(htaccessPath) ? fs.readFileSync(htaccessPath, "utf8") : "";
+      if (expectedHashDirectives.some((directive) => !htaccessSource.includes(directive))) {
+        errors.push(`${label}: hash CSP do JSON-LD deve acompanhar public/index.html`);
+      }
+      if (!htaccessSource.includes('Header always set Cache-Control "no-cache"')) {
+        errors.push(`${label}: deve definir Cache-Control no-cache para HTML/CSS/JS na Hostinger`);
+      }
+      if (!htaccessSource.includes('public, max-age=31536000, immutable')) {
+        errors.push(`${label}: deve definir cache imutavel para imagens e fontes na Hostinger`);
+      }
+    });
   }
 }
 

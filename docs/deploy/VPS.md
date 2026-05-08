@@ -66,12 +66,14 @@ REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
 SITE_URL=https://cdcentral.com.br
 ALLOWED_ORIGINS=https://cdcentral.com.br
+ENABLE_CANONICAL_REDIRECT=1
+CSP_REPORT_URL=https://cdcentral.com.br/api/csp-report
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
-REQUIRE_EXTERNAL_RATE_LIMIT=0
+REQUIRE_EXTERNAL_RATE_LIMIT=1
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 ```
 
@@ -215,7 +217,7 @@ curl -I https://cdcentral.com.br/assets/fonts/manrope-latin.woff2
 curl -I https://cdcentral.com.br/.well-known/security.txt
 ```
 
-`assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes podem usar cache longo.
+`/`, paginas HTML, `assets/css/styles.css` e `assets/js/script.js` devem responder com `Cache-Control: no-cache`. Imagens e fontes devem responder com `Cache-Control: public, max-age=31536000, immutable`.
 
 Arquivos sensiveis devem retornar 404:
 

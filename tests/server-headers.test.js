@@ -5,9 +5,9 @@ process.env.SITE_URL = "https://cdcentral.com.br";
 process.env.ENABLE_CANONICAL_REDIRECT = "1";
 process.env.UPSTASH_REDIS_REST_URL = "https://example-upstash.upstash.io";
 process.env.UPSTASH_REDIS_REST_TOKEN = "upstash-token-test";
+process.env.REQUIRE_EXTERNAL_RATE_LIMIT = "1";
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_LEADS_INSERT_KEY = "sb_secret_test_key";
-delete process.env.REQUIRE_EXTERNAL_RATE_LIMIT;
 delete process.env.ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION;
 
 const assert = require("node:assert/strict");

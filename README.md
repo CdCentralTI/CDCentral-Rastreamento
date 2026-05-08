@@ -21,7 +21,7 @@ O site foi pensado para:
 - Node.js para servidor HTTP permanente
 - rotas HTTP em `api/`
 - Supabase como armazenamento dos leads
-- Upstash Redis recomendado para rate limit distribuído
+- Upstash Redis obrigatório em produção para rate limit distribuído
 
 ## Estrutura do projeto
 
@@ -232,7 +232,7 @@ O endpoint possui proteções simples contra abuso:
 - exigência de `Origin` válido em produção;
 - rate limit por IP com chave `rl:ip:<ip>` de 5 requisições a cada 10 minutos;
 - rate limit por WhatsApp com chave `rl:wpp:<digits>` de 3 requisições a cada 24 horas;
-- Upstash Redis opcional para rate limit distribuído; sem ele, o fallback em memória é best-effort;
+- Upstash Redis obrigatório em produção para rate limit distribuído; sem ele, `/api/leads` falha fechado;
 - consentimento LGPD obrigatório e persistido com data, versão e IP;
 - campo honeypot `empresa`;
 - verificação de tempo mínimo de preenchimento via `startedAt`.
@@ -279,14 +279,14 @@ REQUIRE_REQUEST_ORIGIN=1
 CONSENT_VERSION=2026-04-28
 SITE_URL=https://cdcentral.com.br
 ALLOWED_ORIGINS=https://cdcentral.com.br
-ENABLE_CANONICAL_REDIRECT=0
+ENABLE_CANONICAL_REDIRECT=1
 CSP_REPORT_URL=https://cdcentral.com.br/api/csp-report
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
-REQUIRE_EXTERNAL_RATE_LIMIT=0
+REQUIRE_EXTERNAL_RATE_LIMIT=1
 ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 CRON_SECRET=your_random_cron_secret
 ```
@@ -335,16 +335,16 @@ CRON_SECRET=your_random_cron_secret
 
 - `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
   Credenciais REST do Upstash Redis para rate limit distribuído.
-  Recomendadas em staging/producao para rate limit distribuido, mas nao obrigatorias quando `REQUIRE_EXTERNAL_RATE_LIMIT=0`.
+  Obrigatórias em staging/producao para rate limit distribuido.
 
 - `REQUIRE_EXTERNAL_RATE_LIMIT`
-  Use `0` para permitir fallback em memoria. Use `1` somente se quiser bloquear o formulario quando Upstash Redis nao estiver configurado.
+  Use `1` em staging/producao. Sem Upstash Redis configurado, `/api/leads` falha fechado com `503`.
 
 - `CONSENT_VERSION`
   Versão vigente do consentimento LGPD entregue por `/api/public-config` e validada por `/api/leads`.
 
 - `ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION`
-  Mantido por compatibilidade. O fallback em memória é permitido quando `REQUIRE_EXTERNAL_RATE_LIMIT=0`.
+  Mantido por compatibilidade. O fallback em memória não é aceito em produção.
 
 - `CRON_SECRET`
   Segredo usado pela Vercel Cron em `Authorization: Bearer ...` para executar `/api/purge-leads`, que remove leads com mais de 24 meses.
@@ -425,13 +425,13 @@ O projeto deve ser publicado como aplicação Node.js permanente. Para Hostinger
 Pontos importantes na publicação:
 
 - configurar corretamente as variáveis de ambiente;
-- se editar o JSON-LD em [public/index.html](./public/index.html), rodar `node scripts/update-csp-hash.js` antes de deploy Vercel; `npm run build` agora falha quando o hash ficar desatualizado;
+- se editar o JSON-LD em [public/index.html](./public/index.html), rodar `node scripts/update-csp-hash.js` antes do deploy; `npm run build` mantém o hash de CSP sincronizado com [public/.htaccess](./public/.htaccess);
 - garantir que o domínio final esteja em `SITE_URL`;
-- manter `ENABLE_CANONICAL_REDIRECT=0` até o domínio final resolver em DNS e só então ativar o redirect canônico;
+- manter `ENABLE_CANONICAL_REDIRECT=1` quando o domínio final já estiver resolvendo em DNS;
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentral.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção; `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback;
-- se quiser rate limit distribuido, configure `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`; caso contrario, mantenha `REQUIRE_EXTERNAL_RATE_LIMIT=0`;
+- configurar `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` e `REQUIRE_EXTERNAL_RATE_LIMIT=1` em staging/producao;
 - aplicar [database/supabase/leads-schema.sql](./database/supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados;
 - aplicar [database/supabase/harden-public-functions.sql](./database/supabase/harden-public-functions.sql) se existirem funcoes `SECURITY DEFINER` internas em `public` apontadas pelos advisors do Supabase;
 - rodar `node scripts/validate-runtime-env.js`, `node scripts/smoke-supabase-lead.js` e `node scripts/smoke-deploy.js` para fechar a validacao do ambiente real.

@@ -50,6 +50,28 @@ const addCheck = (level, label, detail) => {
   checks.push({ level, label, detail });
 };
 
+const getHeader = (response, name) => response?.headers?.get(name) || "";
+
+const expectHeader = (response, name, pattern, label, message) => {
+  const value = getHeader(response, name);
+  if (!pattern.test(value)) {
+    addCheck("error", label, `${message}; ${name}="${value}"`);
+    return;
+  }
+
+  addCheck("ok", label, `${name}=${value}`);
+};
+
+const expectFullCsp = (response, label) => {
+  const csp = getHeader(response, "content-security-policy");
+  if (!/default-src\s+'self'/i.test(csp) || !/frame-ancestors\s+'none'/i.test(csp)) {
+    addCheck("error", label, `Content-Security-Policy is incomplete: "${csp}"`);
+    return;
+  }
+
+  addCheck("ok", label, "Content-Security-Policy is complete");
+};
+
 const assertStatus = async (pathname, expectedStatus, label) => {
   let response;
   try {
@@ -81,6 +103,15 @@ const assertStatus = async (pathname, expectedStatus, label) => {
   if (home.body && !home.body.includes("<title>CDCentral Rastreamento")) {
     addCheck("error", "home", "home HTML does not contain the expected title");
   }
+  if (home.response) {
+    expectFullCsp(home.response, "home csp");
+    expectHeader(home.response, "strict-transport-security", /max-age=\d+/i, "home security", "HSTS missing");
+    expectHeader(home.response, "x-frame-options", /^DENY$/i, "home security", "X-Frame-Options missing");
+    expectHeader(home.response, "x-content-type-options", /^nosniff$/i, "home security", "X-Content-Type-Options missing");
+    expectHeader(home.response, "referrer-policy", /strict-origin-when-cross-origin/i, "home security", "Referrer-Policy missing");
+    expectHeader(home.response, "permissions-policy", /geolocation=\(\)/i, "home security", "Permissions-Policy missing");
+    expectHeader(home.response, "cache-control", /(^|,\s*)no-cache(,|$)/i, "home cache", "HTML Cache-Control must be no-cache");
+  }
 
   try {
     const configResponse = await request("/api/public-config");
@@ -94,8 +125,29 @@ const assertStatus = async (pathname, expectedStatus, label) => {
         addCheck("ok", "public config", `consentVersion=${config.consentVersion}`);
       }
     }
+    expectFullCsp(configResponse, "public config csp");
+    expectHeader(configResponse, "strict-transport-security", /max-age=\d+/i, "public config security", "HSTS missing");
+    expectHeader(configResponse, "x-frame-options", /^DENY$/i, "public config security", "X-Frame-Options missing");
+    expectHeader(configResponse, "x-content-type-options", /^nosniff$/i, "public config security", "X-Content-Type-Options missing");
   } catch (error) {
     addCheck("error", "public config", `request failed: ${error.cause?.code || error.message}`);
+  }
+
+  for (const asset of [
+    ["/assets/css/styles.css", /(^|,\s*)no-cache(,|$)/i, "css cache"],
+    ["/assets/js/script.js", /(^|,\s*)no-cache(,|$)/i, "js cache"],
+    ["/assets/fonts/sora-latin.woff2", /public,\s*max-age=31536000,\s*immutable/i, "font cache"],
+  ]) {
+    try {
+      const assetResponse = await request(asset[0]);
+      if (assetResponse.status !== 200) {
+        addCheck("error", asset[2], `${asset[0]} returned ${assetResponse.status}`);
+      } else {
+        expectHeader(assetResponse, "cache-control", asset[1], asset[2], `${asset[0]} Cache-Control is invalid`);
+      }
+    } catch (error) {
+      addCheck("error", asset[2], `request failed: ${error.cause?.code || error.message}`);
+    }
   }
 
   try {
@@ -104,8 +156,8 @@ const assertStatus = async (pathname, expectedStatus, label) => {
       addCheck("error", "assets", `optimized WebP returned ${webpResponse.status}`);
     } else {
       const cacheControl = webpResponse.headers.get("cache-control") || "";
-      if (!cacheControl.includes("max-age=31536000")) {
-        addCheck("warn", "assets", `optimized WebP cache-control is "${cacheControl}"`);
+      if (!/public,\s*max-age=31536000,\s*immutable/i.test(cacheControl)) {
+        addCheck("error", "assets", `optimized WebP cache-control is "${cacheControl}"`);
       } else {
         addCheck("ok", "assets", "optimized WebP is public and cacheable");
       }
