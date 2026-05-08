@@ -601,7 +601,27 @@ process.on("uncaughtException", (error) => {
   gracefulShutdown("uncaughtException");
 });
 
-if (require.main === module) {
+const isLoadedByNodeTestRunner = () => {
+  if (process.env.NODE_TEST_CONTEXT) {
+    return true;
+  }
+
+  const mainFilename = require.main?.filename || "";
+  if (/[\\/]node_modules[\\/]/.test(mainFilename)) {
+    return false;
+  }
+
+  return /\.test\.(c|m)?js$/i.test(mainFilename) || /[\\/]tests?[\\/]/.test(mainFilename);
+};
+
+const isManagedNodeHost =
+  typeof globalThis.PhusionPassenger !== "undefined" ||
+  Boolean(process.env.PASSENGER_APP_ENV) ||
+  Boolean(process.env.PASSENGER_BASE_URI) ||
+  Boolean(process.env.NODE_APP_INSTANCE) ||
+  Boolean(process.env.HOSTINGER_NODE_APP);
+
+if (require.main === module || (isManagedNodeHost && !isLoadedByNodeTestRunner())) {
   startServer();
 }
 

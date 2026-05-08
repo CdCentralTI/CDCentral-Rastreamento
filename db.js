@@ -2,9 +2,7 @@
 
 const { purgeOldLeadsFromSupabase, saveLeadToSupabase } = require("./lib/leads-service");
 
-if (require.main === module) {
-  require("./server").startServer();
-}
+require("./server").startServer();
 
 module.exports = {
   purgeOldLeadsFromSupabase,

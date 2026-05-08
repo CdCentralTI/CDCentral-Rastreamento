@@ -2,8 +2,6 @@
 
 const app = require("./server");
 
-if (require.main === module) {
-  app.startServer();
-}
+app.startServer();
 
 module.exports = app;
