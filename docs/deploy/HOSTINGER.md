@@ -33,6 +33,7 @@ public/politica-de-privacidade.html
 public/termos-de-uso.html
 public/robots.txt
 public/sitemap.xml
+app.js
 server.js
 package.json
 package-lock.json
@@ -75,6 +76,8 @@ Se o deploy for via GitHub, mantenha esses arquivos sensiveis fora do repositori
 ```text
 server.js
 ```
+
+`app.js` tambem foi mantido como entrypoint de compatibilidade para o detector da Hostinger. Mesmo assim, prefira `server.js` no hPanel para deixar explicito qual processo HTTP deve iniciar.
 
 6. Configure o start command como:
 
@@ -221,6 +224,13 @@ curl -i https://cdcentral.com.br/api/purge-leads
 Resposta esperada: `401`.
 
 ## Troubleshooting
+
+Erro 503 logo ao abrir o site:
+
+- Confira nos logs de runtime se o processo esta tentando executar `db.js`, `index.js` ou `app.js` em vez de `server.js`. O entry file correto no hPanel e `server.js`; `app.js` existe apenas como fallback de compatibilidade.
+- Confirme que o processo esta rodando `npm start` e que o log mostra `Servidor rodando em 0.0.0.0:<porta>`.
+- Em Node.js Web App gerenciado, use `HOST=0.0.0.0` ou remova `HOST`; nao use `HOST=127.0.0.1`.
+- Se `/health` responder 200 mas o envio do formulario retornar 503, o Node esta online e o problema esta nas variaveis de API/Supabase, especialmente `SUPABASE_URL` e `SUPABASE_LEADS_INSERT_KEY`.
 
 Erro 404 no site:
 

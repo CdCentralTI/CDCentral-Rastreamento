@@ -1,17 +1,12 @@
 "use strict";
 
-const { createClient } = require("@supabase/supabase-js");
+const { purgeOldLeadsFromSupabase, saveLeadToSupabase } = require("./lib/leads-service");
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+if (require.main === module) {
+  require("./server").startServer();
+}
 
-// Test the connection.
-supabase
-  .from("leads")
-  .select("*")
-  .limit(1)
-  .then(({ data, error }) => {
-    if (error) console.error("Connection error:", error);
-    else console.log("Connected:", data);
-  });
-
-module.exports = supabase;
+module.exports = {
+  purgeOldLeadsFromSupabase,
+  saveLeadToSupabase,
+};

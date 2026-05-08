@@ -28,6 +28,8 @@ O site foi pensado para:
 
 ```text
 .
+|-- app.js
+|-- db.js
 |-- server.js
 |-- package.json
 |-- package-lock.json
@@ -77,6 +79,12 @@ O site foi pensado para:
 
 - [server.js](./server.js)
   Servidor principal de produção. Serve arquivos públicos, aplica headers/cache/logs, expõe `/health` e encaminha `/api/leads`, `/api/public-config` e `/api/csp-report`.
+
+- [app.js](./app.js)
+  Entrypoint de compatibilidade para plataformas que detectam `app.js` automaticamente. Ele apenas inicia o servidor principal.
+
+- [db.js](./db.js)
+  Wrapper legado sem conexao no boot. Se for executado por engano como startup file, delega para `server.js` em vez de derrubar o processo.
 
 - [config/pm2/ecosystem.config.cjs](./config/pm2/ecosystem.config.cjs)
   Configuração opcional de PM2 para VPS.

@@ -536,6 +536,26 @@ const startServer = () => {
   }
 
   server = createAppServer();
+  server.on("error", (error) => {
+    console.error("Server listen error:", {
+      name: error?.name || "Error",
+      code: error?.code || "listen_error",
+      message: error?.message || "Nao foi possivel iniciar o servidor.",
+      host: HOST,
+      port: PORT,
+    });
+
+    process.exit(1);
+  });
+
+  console.log("Iniciando servidor Node.js", {
+    nodeEnv: process.env.NODE_ENV,
+    nodeVersion: process.version,
+    host: HOST,
+    port: PORT,
+    cwd: process.cwd(),
+  });
+
   server.listen(PORT, HOST, () => {
     console.log(`Servidor rodando em ${HOST}:${PORT}`);
   });

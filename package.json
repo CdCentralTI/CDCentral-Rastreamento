@@ -1,6 +1,7 @@
 {
   "name": "cdcentral-rastreamento",
   "version": "1.0.0",
+  "main": "server.js",
   "private": true,
   "description": "Aplicacao Node.js da CDCentral Rastreamento com site estatico e API de leads.",
   "license": "UNLICENSED",
@@ -18,7 +19,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
     "@upstash/redis": "1.37.0"
   },
   "devDependencies": {
