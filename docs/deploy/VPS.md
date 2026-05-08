@@ -68,11 +68,7 @@ SITE_URL=https://cdcentral.com.br
 ALLOWED_ORIGINS=https://cdcentral.com.br
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
-ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=0
 SUPABASE_LEADS_TABLE=leads
-REQUIRE_TURNSTILE=0
-TURNSTILE_SITE_KEY=your_public_turnstile_site_key
-TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 REQUIRE_EXTERNAL_RATE_LIMIT=0
@@ -81,7 +77,7 @@ ALLOW_MEMORY_RATE_LIMIT_IN_PRODUCTION=0
 
 `CONSENT_VERSION` representa a fonte operacional da versao de consentimento enviada por `/api/public-config` e validada em `/api/leads`. Ao atualizar a Politica de Privacidade, altere essa variavel no `.env` da VPS e reinicie o PM2.
 
-`SUPABASE_SERVICE_ROLE_KEY` nao e usado como fallback implicito. Se voce decidir usar esse nome em vez de `SUPABASE_LEADS_INSERT_KEY`, configure `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1` conscientemente.
+`SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback. Configure explicitamente `SUPABASE_LEADS_INSERT_KEY` com uma chave server-side e remova `SUPABASE_SERVICE_ROLE_KEY` do ambiente.
 
 Proteja o arquivo:
 
@@ -275,7 +271,7 @@ Se alterar o schema, aplique `database/supabase/leads-schema.sql` no Supabase.
 500 na API:
 
 - Verifique `.env`.
-- Confirme `TURNSTILE_SECRET_KEY`, Supabase e Upstash.
+- Confirme Supabase e Upstash.
 - Se `REQUIRE_EXTERNAL_RATE_LIMIT=1`, `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` sao obrigatorios para `/api/leads`; sem eles o endpoint falha fechado.
 - Veja `pm2 logs cdcentral-rastreamento`.
 

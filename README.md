@@ -22,7 +22,6 @@ O site foi pensado para:
 - rotas HTTP em `api/`
 - Supabase como armazenamento dos leads
 - Upstash Redis recomendado para rate limit distribuído
-- Cloudflare Turnstile recomendado para verificação antiabuso
 
 ## Estrutura do projeto
 
@@ -206,14 +205,13 @@ Os campos principais do formulário são:
 - `veiculos`
 - `consent`
 - `consentVersion`
-- `cf-turnstile-response`
 
 O backend também reconhece campos auxiliares de proteção quando presentes:
 
 - `empresa`
 - `startedAt`
 
-No fluxo do site, `startedAt` é enviado pelo formulário e usado como sinal anti-spam. Quando o Cloudflare Turnstile está configurado, o token `cf-turnstile-response` é gerado no navegador e validado no backend antes de gravar o lead.
+No fluxo do site, `startedAt` é enviado pelo formulário e usado como sinal anti-spam.
 
 ### Regras de validação
 
@@ -224,7 +222,6 @@ No frontend e backend, o lead precisa ter:
 - tipo preenchido;
 - quantidade de veículos maior ou igual a 1;
 - consentimento LGPD marcado com a versão vigente;
-- token Turnstile válido quando a proteção estiver configurada/obrigatória.
 
 ### Proteções existentes
 
@@ -236,7 +233,6 @@ O endpoint possui proteções simples contra abuso:
 - rate limit por IP com chave `rl:ip:<ip>` de 5 requisições a cada 10 minutos;
 - rate limit por WhatsApp com chave `rl:wpp:<digits>` de 3 requisições a cada 24 horas;
 - Upstash Redis opcional para rate limit distribuído; sem ele, o fallback em memória é best-effort;
-- validação server-side opcional do Cloudflare Turnstile quando `REQUIRE_TURNSTILE=1`;
 - consentimento LGPD obrigatório e persistido com data, versão e IP;
 - campo honeypot `empresa`;
 - verificação de tempo mínimo de preenchimento via `startedAt`.
@@ -288,9 +284,6 @@ CSP_REPORT_URL=https://cdcentral.com.br/api/csp-report
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_LEADS_INSERT_KEY=your_server_side_insert_key
 SUPABASE_LEADS_TABLE=leads
-REQUIRE_TURNSTILE=0
-TURNSTILE_SITE_KEY=your_public_turnstile_site_key
-TURNSTILE_SECRET_KEY=your_private_turnstile_secret_key
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
 REQUIRE_EXTERNAL_RATE_LIMIT=0
@@ -339,15 +332,6 @@ CRON_SECRET=your_random_cron_secret
 
 - `REQUIRE_REQUEST_ORIGIN`
   Use `1` em produção para exigir `Origin` válido em `POST /api/leads`.
-
-- `TURNSTILE_SITE_KEY`
-  Chave pública do widget Cloudflare Turnstile. Ela é entregue ao navegador por `/api/public-config`.
-
-- `TURNSTILE_SECRET_KEY`
-  Chave secreta server-side usada para validar `cf-turnstile-response`. Não exponha no frontend.
-
-- `REQUIRE_TURNSTILE`
-  Use `0` para manter o formulario sem Turnstile. Use `1` somente se quiser exigir Turnstile; nesse modo a API falha fechada se `TURNSTILE_SITE_KEY` ou `TURNSTILE_SECRET_KEY` estiver ausente.
 
 - `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
   Credenciais REST do Upstash Redis para rate limit distribuído.
@@ -428,13 +412,11 @@ Depois de confirmar as variaveis, valide a gravacao real no Supabase. O comando 
 node scripts/smoke-supabase-lead.js --env=.env.production.local --target=production --confirm-write
 ```
 
-Depois do deploy publicado, rode um smoke test contra a URL real para confirmar DNS, headers, `/api/public-config`, Turnstile e asset otimizado:
+Depois do deploy publicado, rode um smoke test contra a URL real para confirmar DNS, headers, `/api/public-config` e asset otimizado:
 
 ```powershell
 node scripts/smoke-deploy.js --url=https://cdcentral.com.br
 ```
-
-Se quiser exigir Turnstile no smoke test, use `--require-turnstile`.
 
 ## Publicação
 
@@ -449,7 +431,6 @@ Pontos importantes na publicação:
 - revisar `robots.txt`, `sitemap.xml` e os metadados canônicos se o domínio final não for `https://cdcentral.com.br`;
 - liberar previews e ambientes auxiliares em `ALLOWED_ORIGINS`;
 - manter `SUPABASE_LEADS_INSERT_KEY` configurada no ambiente de produção; `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback;
-- mantenha `REQUIRE_TURNSTILE=0` se o formulario deve funcionar sem anti-spam; se ativar `REQUIRE_TURNSTILE=1`, configure `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`;
 - se quiser rate limit distribuido, configure `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`; caso contrario, mantenha `REQUIRE_EXTERNAL_RATE_LIMIT=0`;
 - aplicar [database/supabase/leads-schema.sql](./database/supabase/leads-schema.sql) e validar se a tabela aceita os campos esperados;
 - aplicar [database/supabase/harden-public-functions.sql](./database/supabase/harden-public-functions.sql) se existirem funcoes `SECURITY DEFINER` internas em `public` apontadas pelos advisors do Supabase;
@@ -457,7 +438,7 @@ Pontos importantes na publicação:
 
 ### Estratégia Supabase/RLS
 
-O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações, Turnstile opcional e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY`. O nome `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback.
+O schema deixa `public.leads` com RLS ativo e sem permissões para `anon`/`authenticated`. Isso é intencional: o navegador nunca grava diretamente na tabela. A rota `/api/leads` é o único ponto de entrada, aplicando validações e rate limit antes de usar `SUPABASE_LEADS_INSERT_KEY`. O nome `SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback.
 
 Depois de aplicar o schema, rode os advisors de seguranca do Supabase. Se houver funcoes internas `SECURITY DEFINER` em `public` com `EXECUTE` para `anon`, `authenticated` ou `public`, aplique [database/supabase/harden-public-functions.sql](./database/supabase/harden-public-functions.sql). Isso mantem triggers/event triggers internos funcionando, mas remove a chamada direta via Data API.
 
@@ -466,13 +447,11 @@ Depois de aplicar o schema, rode os advisors de seguranca do Supabase. Se houver
 Antes de publicar, confirme:
 
 - `POST /api/leads` sem `Origin` em produção retorna `403`;
-- `POST /api/leads` com `cf-turnstile-response` inválido retorna `400` quando `REQUIRE_TURNSTILE=1` ou as chaves Turnstile estão configuradas;
-- `POST /api/leads` e `/api/public-config` falham fechados quando `REQUIRE_TURNSTILE=1` e alguma chave Turnstile esta ausente;
 - `POST /api/leads` sem `consent: true` retorna `422`;
 - mais de 5 `POST /api/leads` em 10 minutos para o mesmo IP retorna `429`;
 - o HTML servido não contém chaves Supabase nem segredos;
 - `/.well-known/security.txt` responde com contato e expiração futura;
-- a CSP não permite Google Fonts e permite Cloudflare Turnstile em `script-src`, `frame-src` e `connect-src`.
+- a CSP não permite Google Fonts nem origens externas desnecessárias.
 
 ## Limite conhecido
 

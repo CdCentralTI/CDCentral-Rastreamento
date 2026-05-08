@@ -15,6 +15,8 @@ const rootFiles = [
 ];
 
 const jsFiles = [
+  "app.js",
+  "db.js",
   "server.js",
   "api/csp-report.js",
   "api/leads.js",
@@ -325,6 +327,21 @@ if (fs.existsSync(vercelConfigPath)) {
     if (!serverSource.includes("getJsonLdHashDirective")) {
       errors.push("server.js: CSP deve calcular o hash JSON-LD no handler Node");
     }
+  }
+}
+
+const packagePath = path.join(root, "package.json");
+if (fs.existsSync(packagePath)) {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+    if (packageJson.main !== "server.js") {
+      errors.push("package.json: main deve apontar para server.js");
+    }
+    if (packageJson.scripts?.start !== "node server.js") {
+      errors.push("package.json: script start deve executar node server.js");
+    }
+  } catch (error) {
+    errors.push("package.json: JSON invalido");
   }
 }
 

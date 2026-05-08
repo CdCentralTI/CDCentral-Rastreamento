@@ -123,7 +123,7 @@ O schema padrao deixa `public.leads` fechada para `anon` e `authenticated`. A es
 - a API grava no Supabase usando `SUPABASE_LEADS_INSERT_KEY` somente no backend;
 - use uma chave server-side, preferencialmente `service_role` ou secret key, nunca anon/publishable key.
 
-`SUPABASE_SERVICE_ROLE_KEY` nao e usado como fallback implicito. Se a hospedagem injeta esse nome e voce decidir usa-lo, configure `ALLOW_SUPABASE_SERVICE_ROLE_KEY_FALLBACK=1` conscientemente.
+`SUPABASE_SERVICE_ROLE_KEY` nao e aceito como fallback. Configure explicitamente `SUPABASE_LEADS_INSERT_KEY` com uma chave server-side e remova `SUPABASE_SERVICE_ROLE_KEY` do ambiente para evitar diagnostico ambiguo.
 
 Se voce preferir usar anon/publishable key, sera necessario redesenhar as permissoes com uma funcao server-side segura. Nao exponha insert direto na tabela, pois isso contorna rate limit e validacoes do backend.
 
